@@ -35,7 +35,7 @@ class Frame(BaseModel):
 
 class Scan(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
-    videoId: Literal["XnWESGXnGwY"]
+    videoId: str = Field(pattern=r"^[A-Za-z0-9_-]{11}$")
     start: float = Field(ge=0)
     end: float = Field(gt=0)
     ageBand: Literal["3-5", "6-8", "9-12"] = "3-5"
@@ -96,7 +96,7 @@ async def lifespan(app):
         yield
 
 
-app = FastAPI(title="Sprout Decisions relay", lifespan=lifespan)
+app = FastAPI(title="Pawse Decisions relay", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -105,7 +105,7 @@ async def local_extension_only(request, call_next):
     origin = request.headers.get("origin", "")
     if origin and not origin.startswith("chrome-extension://"):
         from starlette.responses import JSONResponse
-        return JSONResponse({"detail": "Use the Sprout extension"}, status_code=403)
+        return JSONResponse({"detail": "Use the Pawse extension"}, status_code=403)
     if int(request.headers.get("content-length", "0")) > 3_000_000:
         from starlette.responses import JSONResponse
         return JSONResponse({"detail": "Request too large"}, status_code=413)

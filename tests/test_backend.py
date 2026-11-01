@@ -18,6 +18,13 @@ def payload():
 
 
 class BackendTests(unittest.TestCase):
+    def test_other_youtube_video_ids_are_accepted(self):
+        for video_id in ["aqz-KE-bpKQ", "wiiFgsDJ8xk"]:
+            self.assertEqual(Scan(**{**payload(), "videoId": video_id}).videoId, video_id)
+        for video_id in ["bad", "https://www.youtube.com/watch?v=XnWESGXnGwY", "../private"]:
+            with self.assertRaises(ValueError):
+                Scan(**{**payload(), "videoId": video_id})
+
     def test_frames_and_rules_share_one_request(self):
         body = build_request(Scan(**payload()))
         self.assertEqual(sum(c["type"] == "input_image" for c in body["input"][0]["content"]), 3)

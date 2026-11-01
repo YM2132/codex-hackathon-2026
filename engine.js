@@ -99,7 +99,7 @@
         const decoded = await capture("decodeFuture", {times, maxWidth: 512, quality: .75});
         if (generation !== this.generation) return;
         if (decoded.frames?.length !== times.length || decoded.frames.some((f, i) => !f.jpeg || f.error || Math.abs(f.decodedAt - times[i]) > .15)) {
-          throw new Error("Couldn’t capture every frame. Playback is held while Sprout retries.");
+          throw new Error("Couldn’t capture every frame. Playback is held while Pawse retries.");
         }
         const result = await chrome.runtime.sendMessage({type: "classify_frames", scan: {
           videoId, start, end, frames: decoded.frames.map(f => ({timestamp: f.decodedAt, jpeg: f.jpeg}))

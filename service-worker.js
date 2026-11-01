@@ -33,7 +33,7 @@ async function settings() {
 }
 
 async function decide(videoId, tabId) {
-  if (videoId !== "XnWESGXnGwY") return {videoId, status: "off", preview: false};
+  if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) return {videoId, status: "off", preview: false};
   const prefs = await settings();
   if (!prefs.setupComplete || !prefs.protectionOn) {
     return { videoId, status: "off", preview: false };
@@ -70,7 +70,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     if (message?.type === "classify_frames") {
-      if (message.scan?.videoId !== "XnWESGXnGwY") throw new Error("This demo checks only XnWESGXnGwY");
+      if (!/^[A-Za-z0-9_-]{11}$/.test(message.scan?.videoId || "")) throw new Error("Invalid YouTube video ID");
       const prefs = await settings();
       if (!prefs.setupComplete || !prefs.protectionOn || prefs.previewScenario !== "off") {
         sendResponse({ok: false, error: "Live checks are disabled"}); return;
@@ -157,6 +157,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
     sendResponse({ ok: false });
-  })().catch(() => sendResponse({ ok: false, error: "Sprout cannot reach the Decisions service. Start the local backend and retry." }));
+  })().catch(() => sendResponse({ ok: false, error: "Pawse cannot reach the Decisions service. Start the local backend and retry." }));
   return true;
 });

@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Sprout \u2014 YouTube family mode",
-  "version": "0.2.0",
-  "description": "Sprout checks buffered YouTube frames ahead of playback with OpenAI Decisions.",
+  "name": "Pawse — YouTube family mode",
+  "version": "0.3.0",
+  "description": "Pawse checks buffered YouTube frames ahead of playback with OpenAI Decisions.",
   "icons": {
-    "16": "assets/icons/sprout-16.png",
-    "32": "assets/icons/sprout-32.png",
-    "48": "assets/icons/sprout-48.png",
-    "128": "assets/icons/sprout-128.png"
+    "16": "assets/icons/pawse-16.png",
+    "32": "assets/icons/pawse-32.png",
+    "48": "assets/icons/pawse-48.png",
+    "128": "assets/icons/pawse-128.png"
   },
   "permissions": [
     "storage",
@@ -21,12 +21,12 @@
     "service_worker": "service-worker.js"
   },
   "action": {
-    "default_title": "Sprout family mode",
+    "default_title": "Pawse family mode",
     "default_icon": {
-      "16": "assets/icons/sprout-16.png",
-      "32": "assets/icons/sprout-32.png",
-      "48": "assets/icons/sprout-48.png",
-      "128": "assets/icons/sprout-128.png"
+      "16": "assets/icons/pawse-16.png",
+      "32": "assets/icons/pawse-32.png",
+      "48": "assets/icons/pawse-48.png",
+      "128": "assets/icons/pawse-128.png"
     },
     "default_popup": "popup.html"
   },
@@ -56,7 +56,10 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "assets/sprout-mascot-512.png"
+        "assets/pawse-idle-cutout.png",
+        "assets/pawse-thinking-cutout.png",
+        "assets/pawse-greeting-cutout.png",
+        "assets/pawse-pause-cutout.png"
       ],
       "matches": [
         "https://www.youtube.com/*"

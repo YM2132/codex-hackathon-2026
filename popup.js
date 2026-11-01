@@ -7,7 +7,7 @@ let renderedRulesKey = null;
 async function getSettings() {
   if (extensionMode) return { ...DEFAULTS, ...(await chrome.runtime.sendMessage({ type: "get_settings" })) };
   try {
-    const saved = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("sprout-preview-settings") || "{}") };
+    const saved = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("pawse-preview-settings") || "{}") };
     const demo = new URLSearchParams(location.search).get("demo");
     if (["safe", "review", "blocked"].includes(demo)) {
       return { ...saved, setupComplete: true, protectionOn: true, previewScenario: demo };
@@ -21,7 +21,7 @@ async function saveSettings(patch) {
   const current = await getSettings();
   const next = { ...current, ...patch };
   if (extensionMode) await chrome.runtime.sendMessage({ type: "save_settings", settings: next });
-  else localStorage.setItem("sprout-preview-settings", JSON.stringify(next));
+  else localStorage.setItem("pawse-preview-settings", JSON.stringify(next));
   return next;
 }
 
@@ -41,7 +41,7 @@ async function getDecision(video) {
   if (!extensionMode) {
     const settings = await getSettings();
     if (!settings.setupComplete || !settings.protectionOn) return { status: "off" };
-    if (sessionStorage.getItem("sprout-allowed-once") === video.id) return { status: "allowed_once", preview: true };
+    if (sessionStorage.getItem("pawse-allowed-once") === video.id) return { status: "allowed_once", preview: true };
     const states = {
       safe: { status: "safe", preview: true },
       review: { status: "review", preview: true },
@@ -53,16 +53,16 @@ async function getDecision(video) {
 }
 
 function describeDecision(decision, settings, video) {
-  if (video.id !== "XnWESGXnGwY" && extensionMode) return {title: "Open the demo video", text: "Today’s build checks only XnWESGXnGwY. Other videos are unaffected.", icon: "↗", kind: ""};
-  if (!video.isYoutube) return { title: "Open YouTube", text: "Protection status appears when you visit a YouTube video.", icon: "↗", kind: "" };
-  if (!video.id) return { title: "No video open", text: "Open a video to see its protection status here.", icon: "•", kind: "" };
-  if (!settings.protectionOn) return { title: "Protection is off", text: "Turn it on to use the selected profile on YouTube.", icon: "○", kind: "" };
-  if (decision.status === "safe") return { title: "Looks okay for this profile", text: decision.preview ? "Preview only: this is not a model result." : (decision.detail || "Upcoming visual samples checked for this profile."), icon: "✓", kind: "good" };
-  if (decision.status === "review") return { title: "A grown-up should check this one", text: "Playback is paused until an adult chooses what to do.", icon: "!", kind: "review" };
-  if (decision.status === "blocked") return { title: "Paused for this profile", text: (decision.preview ? "This sample state keeps playback paused." : (decision.detail || "Upcoming content needs your review.")), icon: "Ⅱ", kind: "blocked" };
-  if (decision.status === "connecting") return { title: "Sprout can’t check yet", text: "Playback stays paused until a grown-up checks or the moderation service is connected.", icon: "?", kind: "review" };
-  if (decision.status === "allowed_once") return { title: "Allowed for this video", text: "Playback can continue for this video only.", icon: "✓", kind: "good" };
-  return { title: "Model not connected yet", text: "Protection is on. The team’s moderation service will provide video decisions here.", icon: "…", kind: "" };
+  if (!video.isYoutube) return { title: "Open YouTube", text: "Pawse works on YouTube.", icon: "↗", kind: "" };
+  if (!video.id) return { title: "Choose a video", text: "Open a YouTube video to check it.", icon: "•", kind: "" };
+  if (!settings.protectionOn) return { title: "Protection is off", text: "Turn it on to check videos.", icon: "○", kind: "" };
+  if (decision.status === "safe") return { title: "Pawse says: all clear!", text: decision.preview ? "Just a demo · not a real check." : "Upcoming visual samples checked.", icon: "✓", kind: "good" };
+  if (decision.status === "review") return { title: "Pawse found a bump", text: decision.detail || "Please ask a grown-up to help.", icon: "!", kind: "review" };
+  if (decision.status === "blocked") return { title: "Pawse found a bump", text: decision.detail || "Let’s pick another video together.", icon: "Ⅱ", kind: "blocked" };
+  if (decision.status === "checking") return { title: "Checking…", text: "Wait for Pawse to finish.", icon: "…", kind: "review" };
+  if (decision.status === "connecting") return { title: "Pawse needs a grown-up", text: decision.detail || "Waiting for the next visual check.", icon: "?", kind: "review" };
+  if (decision.status === "allowed_once") return { title: "Allowed once", text: "For this session only.", icon: "✓", kind: "good" };
+  return { title: "Not connected", text: "Moderation service unavailable.", icon: "…", kind: "" };
 }
 
 function toast(message) {
@@ -123,6 +123,9 @@ async function render() {
   $("profileTitle").textContent = AGE_LABELS[settings.ageBand] || AGE_LABELS["3-5"];
   $("ageSelect").value = settings.ageBand;
   $("previewSelect").value = settings.previewScenario;
+  document.querySelectorAll("[data-demo-state]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.demoState === settings.previewScenario));
+  });
   renderRules(Array.isArray(settings.customRules) ? settings.customRules : []);
   $("protectionToggle").setAttribute("aria-checked", String(settings.protectionOn));
   $("protectionHint").classList.toggle("on", settings.protectionOn);
@@ -133,8 +136,14 @@ async function render() {
   $("decisionText").textContent = status.text;
   $("decisionIcon").textContent = status.icon;
   $("decisionIcon").className = "decision-icon " + status.kind;
+  $("checkSummary").textContent = decision.preview
+    ? "Demo state · no model result"
+    : decision.provenance === "live"
+      ? `${decision.frameCount} visual frames · ${decision.apiSeconds}s · checked to ${decision.end.toFixed(1)}s`
+      : decision.status === "off" || !settings.protectionOn ? "Protection is off" : "Waiting for a live visual check";
   $("previewLabel").hidden = !decision.preview;
   $("adultRequestLabel").hidden = !adultRequest.requested;
+  $("adultRequestLabel").textContent = adultRequest.requested ? "🐾 Pawse let your grown-up know." : "";
   $("allowOnceButton").hidden = !["review", "blocked", "connecting"].includes(decision.status) || !video.id;
   $("backButton").hidden = !["review", "blocked", "connecting"].includes(decision.status) || !video.id;
 }
@@ -162,6 +171,14 @@ $("ageSelect").addEventListener("change", async (event) => {
 $("previewSelect").addEventListener("change", async (event) => {
   await saveSettings({ previewScenario: event.target.value });
   refreshTab(); render();
+});
+
+document.querySelectorAll("[data-demo-state]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    await saveSettings({ previewScenario: button.dataset.demoState });
+    refreshTab();
+    render();
+  });
 });
 
 $("ruleInput").addEventListener("input", (event) => {
@@ -198,7 +215,7 @@ $("allowOnceButton").addEventListener("click", async () => {
   if (extensionMode && video.id && video.tabId != null) {
     await chrome.runtime.sendMessage({ type: "allow_once", videoId: video.id, tabId: video.tabId });
   } else if (!extensionMode) {
-    sessionStorage.setItem("sprout-allowed-once", video.id);
+    sessionStorage.setItem("pawse-allowed-once", video.id);
   }
   toast("Allowed once. This choice ends with the current session.");
   render();

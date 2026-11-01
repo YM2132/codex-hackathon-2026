@@ -1,8 +1,8 @@
-# Sprout — look-ahead YouTube protection
+# Pawse — look-ahead YouTube protection
 
-**Today’s build checks only https://www.youtube.com/watch?v=XnWESGXnGwY. Other videos are unaffected.**
+**Checks standard YouTube watch pages in Chrome, including videos beyond the demo. Other websites are not classified.**
 
-One Chrome extension combining the Sprout mascot and parent controls, buffered video capture, and the live OpenAI Decisions classifier. Integration branch: `feat/unified-sprout-extension`.
+One Chrome extension combining Raja’s Pawse dog mascot, four animated states, and parent controls, buffered video capture, and the live OpenAI Decisions classifier. Integration branch: `feat/unified-sprout-extension`.
 
 ## Run the unified extension
 
@@ -14,16 +14,16 @@ uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000
 ```
 
 1. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the **repository root**. Disable the separate look-ahead preview extension if installed.
-2. Pin Sprout. Open its popup, choose the child's age, and click **Set up protection**.
-3. Keep **Preview the experience → No sample state** selected for real model calls.
+2. Pin Pawse. Open its popup, choose the child's age, and click **Set up protection**.
+3. Keep **Try Pawse’s states → Ready** (or **No sample state**) selected for real model calls.
 4. Reload the YouTube tab once after installing. The capture hook must run before YouTube creates its video buffer.
-5. Open the [shared test video](https://youtu.be/XnWESGXnGwY), then press Play if the browser requires it. Sprout holds playback while it checks, lets checked windows play, and pauses before a flagged window. Open the popup for status, a parent override, or family rules.
+5. Open the [shared test video](https://youtu.be/XnWESGXnGwY), then press Play if the browser requires it. Pawse holds playback while it checks, lets checked windows play, and pauses before a flagged window. Open the popup for status, a parent override, or family rules.
 
 The backend must remain running. `http://127.0.0.1:8000/health` reports whether it has a key configured. No key is stored in the extension. Frame samples and parent rules are sent to OpenAI through the local backend. This path uses the bytes already buffered by YouTube; it does not invoke yt-dlp.
 
 ## How the pieces connect
 
-- **Sprout UI** (`content.js`, `popup.*`, `assets/`): parent profiles, plain-language rules, pause card, mascot, help requests, and a session override.
+- **Pawse UI** (`content.js`, `popup.*`, `assets/`): parent profiles, plain-language rules, pause card, mascot, help requests, and a session override.
 - **Look-ahead capture** (`lookahead/extension/page-hook.js`): copies the player's MediaSource chunks and decodes future frames in a separate hidden video element. The original player's position is not changed for capture.
 - **Controller** (`engine.js`, `guard.js`): requests three samples per three-second window at roughly one-second intervals, scans up to four windows including the current one, and guards playback. Short final windows use fewer samples. All frames in a window are assessed together in one Decisions request.
 - **Service worker** (`service-worker.js`): forwards frames and the latest parent profile to the local relay; stores recent status for the popup.

@@ -1,7 +1,13 @@
 // Pure timeline policy, shared by the content controller and Node tests.
 (() => {
   const WINDOW = 3;
-  const DEMO_VIDEO_ID = "XnWESGXnGwY";
+  function videoIdFromUrl(value) {
+    try {
+      const url = new URL(value);
+      const id = url.searchParams.get("v") || "";
+      return url.hostname === "www.youtube.com" && url.pathname === "/watch" && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
+    } catch { return ""; }
+  }
   function evaluate(windows, time, duration) {
     const index = Math.floor(time / WINDOW);
     const current = windows.get(index);
@@ -15,6 +21,6 @@
     }
     return current;
   }
-  globalThis.SproutGuard = {WINDOW, DEMO_VIDEO_ID, evaluate};
+  globalThis.SproutGuard = {WINDOW, videoIdFromUrl, evaluate};
   if (typeof module !== "undefined") module.exports = globalThis.SproutGuard;
 })();

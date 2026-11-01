@@ -3,24 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sprout family mode</title>
+  <title>Pawse</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <main class="app">
     <header class="topbar">
       <div class="brand-lockup">
-        <span class="brand-mark" aria-hidden="true">✳</span>
-        <span><strong>sprout</strong><small>family mode</small></span>
+        <span class="brand-mark" aria-hidden="true">🐾</span>
+        <span><strong>Pawse</strong></span>
       </div>
-      <button class="icon-button" id="helpButton" aria-label="About Sprout" title="About Sprout">?</button>
+      <button class="icon-button" id="helpButton" aria-label="About Pawse" title="About Pawse">?</button>
     </header>
 
     <section id="setupView" class="setup-view" hidden>
-      <div class="welcome-art"><img src="assets/sprout-mascot-512.png" alt="Sprout, your family mode companion"></div>
-      <p class="eyebrow">A calmer way to watch</p>
-      <h1>Give little viewers a pause button.</h1>
-      <p class="intro">Today’s demo checks only XnWESGXnGwY. Sprout pauses before upcoming content that needs a parent’s review.</p>
+      <div class="welcome-art"><img src="assets/pawse-idle-cutout.png" alt=""></div>
+      <h1>Pause. Ask a grown-up.</h1>
+        <p class="intro">Pawse helps keep your videos kid-friendly.</p>
       <label class="field-label" for="setupAge">Who is watching?</label>
       <select id="setupAge" class="select-control">
         <option value="3-5">Ages 3–5</option>
@@ -28,7 +27,6 @@
         <option value="9-12">Ages 9–12</option>
       </select>
       <button id="startButton" class="button button-primary button-wide">Set up protection</button>
-      <p class="fine-print">You can change these settings any time from the Sprout icon.</p>
     </section>
 
     <section id="dashboardView" hidden>
@@ -49,7 +47,8 @@
           </div>
           <span id="decisionIcon" class="decision-icon" aria-hidden="true">•</span>
         </div>
-        <p id="decisionText" class="decision-copy">Open a video to see its protection status here.</p>
+        <p id="decisionText" class="decision-copy" aria-live="polite" aria-atomic="true">Open a video to see its protection status here.</p>
+        <details class="check-details" id="checkDetails"><summary>What Pawse checks</summary><p id="checkSummary">Demo mode · no service connected</p></details>
         <p id="adultRequestLabel" class="adult-request" hidden>Your child asked for help with this video.</p>
         <span id="previewLabel" class="preview-label" hidden>Preview example · no model result</span>
         <button id="allowOnceButton" class="button button-primary button-wide" hidden>Allow this video once</button>
@@ -59,7 +58,7 @@
       <section class="profile-card">
         <div class="profile-copy">
           <span class="profile-icon" aria-hidden="true">◉</span>
-          <div><strong>Watching profile</strong><small>Protection is tuned for this age range.</small></div>
+          <div><strong>Age profile</strong></div>
         </div>
         <label class="sr-only" for="ageSelect">Choose an age range</label>
         <select id="ageSelect" class="compact-select">
@@ -73,14 +72,13 @@
         <div class="rules-heading">
           <div>
             <p class="eyebrow">Parent controls</p>
-            <h2 id="rulesTitle">Family content rules</h2>
+        <h2 id="rulesTitle">Pawse promises</h2>
           </div>
           <span class="rules-mark" aria-hidden="true">✎</span>
         </div>
-        <p class="rules-intro">Tell Sprout what your family would like to avoid, in your own words.</p>
         <form id="ruleForm" class="rule-form">
           <label class="sr-only" for="ruleInput">Describe a content rule</label>
-          <textarea id="ruleInput" maxlength="280" rows="3" placeholder="For example: Avoid videos with loud jump scares."></textarea>
+          <textarea id="ruleInput" maxlength="280" rows="3" placeholder="Add a family rule…"></textarea>
           <div class="rule-form-footer">
             <span id="ruleCharCount">0 / 280</span>
             <button class="button button-primary" type="submit">Add rule</button>
@@ -91,14 +89,20 @@
       </section>
 
       <details class="preview-tools">
-        <summary>Preview the experience</summary>
-        <p>Sample states help the team demo the flow. They are not model predictions.</p>
-        <label for="previewSelect">Choose a sample state</label>
-        <select id="previewSelect" class="select-control">
+        <summary>Try Pawse’s states</summary>
+        <p>Ready uses live checks. Other buttons show demo states.</p>
+        <div class="state-buttons" role="group" aria-label="Preview Pawse states">
+          <button type="button" data-demo-state="off">Ready</button>
+          <button type="button" data-demo-state="safe">All clear</button>
+          <button type="button" data-demo-state="review">Ask a grown-up</button>
+          <button type="button" data-demo-state="blocked">Find another</button>
+        </div>
+        <label class="sr-only" for="previewSelect">Choose a sample state</label>
+        <select id="previewSelect" class="select-control" hidden>
           <option value="off">No sample state</option>
-          <option value="safe">No adult check</option>
-          <option value="review">Adult review</option>
-          <option value="blocked">Paused for profile</option>
+          <option value="safe">All clear</option>
+          <option value="review">Ask a grown-up</option>
+          <option value="blocked">Find another</option>
         </select>
       </details>
 
@@ -107,10 +111,10 @@
 
     <dialog id="helpDialog" class="help-dialog">
       <button id="closeHelp" class="icon-button close-button" aria-label="Close">×</button>
-      <span class="brand-mark" aria-hidden="true">✳</span>
-      <p class="eyebrow">About Sprout</p>
-      <h2>Parents decide. Sprout adds a pause.</h2>
-      <p>Sprout checks buffered video frames ahead of playback using OpenAI Decisions. Start the local backend for live checks. This prototype samples visuals only and may miss content between frames. Parent controls are not PIN protected.</p>
+      <span class="brand-mark" aria-hidden="true">🐾</span>
+      <p class="eyebrow">About Pawse</p>
+      <h2>Parents decide. Pawse adds a pause.</h2>
+      <p>Pawse checks buffered video frames ahead of playback using OpenAI Decisions. Start the local backend for live checks. This prototype samples visuals only and may miss content between frames. Parent controls are not PIN protected.</p>
       <button id="doneHelp" class="button button-primary button-wide">Got it</button>
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>

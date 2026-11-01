@@ -33,7 +33,7 @@ try {
     await new Promise(r=>setTimeout(r,2000));
     const data = await page.evaluate(()=>({
       url:location.href, player:window.__lookahead?.playerState(),
-      overlay:document.querySelector('#sprout-protection-root')?.shadowRoot?.querySelector('#surface')?.textContent?.trim(),
+      overlay:document.querySelector('#pawse-protection-root')?.shadowRoot?.querySelector('#surface')?.textContent?.trim(),
       capture:window.__lookahead?.summary().sourceBuffers.map(({id,mime,appends,bytesHeld})=>({id,mime,appends,bytesHeld})),
       decoder:window.__sproutDecodeDiagnostic
     }));

@@ -65,8 +65,8 @@ try {
       </script>`});
     return request.continue();
   });
-  await page.goto('https://www.youtube.com/watch?v=XnWESGXnGwY');
-  await page.waitForFunction(() => document.querySelector('#sprout-protection-root')?.shadowRoot?.textContent.includes('choose a different video'), {timeout: 30000});
+  await page.goto('https://www.youtube.com/watch?v=aqz-KE-bpKQ');
+  await page.waitForFunction(() => document.querySelector('#pawse-protection-root')?.shadowRoot?.textContent.includes('find another video'), {timeout: 30000});
   const held = await page.evaluate(() => ({time: document.querySelector('video').currentTime, paused: document.querySelector('video').paused}));
   assert(held.paused && held.time < 6 && held.time > 4, JSON.stringify(held));
   assert(calls.some(c => c.start === 6 && c.frames.length === 3));
@@ -77,9 +77,9 @@ try {
 
   delay = 800;
   await page.$eval('video', v => { v.currentTime = 18; v.play().catch(() => {}); });
-  await page.waitForFunction(() => document.querySelector('#sprout-protection-root')?.shadowRoot?.textContent.includes('checking ahead'), {timeout:5000});
+  await page.waitForFunction(() => document.querySelector('#pawse-protection-root')?.shadowRoot?.textContent.includes('checking ahead'), {timeout:5000});
   assert(await page.$eval('video', v => v.paused));
-  await page.waitForFunction(() => document.querySelector('#sprout-protection-root')?.shadowRoot?.textContent.includes('choose a different video'), {timeout:15000});
+  await page.waitForFunction(() => document.querySelector('#pawse-protection-root')?.shadowRoot?.textContent.includes('find another video'), {timeout:15000});
   assert(calls.some(c => c.start === 18));
   console.log('PASS: seeking into an unchecked window holds and prioritizes the new position');
   delay = 100;
@@ -90,7 +90,7 @@ try {
     const [tab] = await chrome.tabs.query({url:'https://www.youtube.com/*'});
     await chrome.tabs.sendMessage(tab.id, {type:'refresh_protection'});
   });
-  await page.waitForFunction(() => document.querySelector('#sprout-protection-root')?.shadowRoot?.textContent.includes('cannot reach'), {timeout:15000});
+  await page.waitForFunction(() => document.querySelector('#pawse-protection-root')?.shadowRoot?.textContent.includes('cannot reach'), {timeout:15000});
   assert(await page.$eval('video', v => v.paused));
   console.log('PASS: backend failure holds playback');
 
@@ -100,7 +100,7 @@ try {
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
   await popup.evaluate(async () => {
     const [tab] = await chrome.tabs.query({url:'https://www.youtube.com/*'});
-    await chrome.runtime.sendMessage({type:'allow_once', videoId:'XnWESGXnGwY', tabId:tab.id});
+    await chrome.runtime.sendMessage({type:'allow_once', videoId:'aqz-KE-bpKQ', tabId:tab.id});
   });
   await page.waitForFunction(() => !document.querySelector('video').paused, {timeout:5000});
   console.log('PASS: parent override releases playback');
@@ -110,7 +110,7 @@ try {
   if (page) {
     console.error('Browser state:', await page.evaluate(() => ({
       hook: window.__lookahead?.summary(),
-      overlay: document.querySelector('#sprout-protection-root')?.shadowRoot?.querySelector('#surface')?.textContent
+      overlay: document.querySelector('#pawse-protection-root')?.shadowRoot?.querySelector('#surface')?.textContent
     })).catch(() => ({})));
     console.error('Relay calls:', calls.map(c => ({start:c.start, frames:c.frames.length})));
     await page.screenshot({path:path.join(out, 'failure.png')}).catch(() => {});
