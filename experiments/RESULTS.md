@@ -5,7 +5,7 @@
 - Interval: 76–102 seconds (1:16–1:42), downloaded with yt-dlp 2026.10.26.
 - Input: 13 JPEG images, 512 pixels wide, sampled every two seconds at source times 76 through 100. No audio, transcript, video title, or description sent to the model.
 - Model/endpoint: `gpt-6-luna`, `POST /v1/decisions`.
-- One real request; no mock results. API round-trip: **5.983 seconds**, excluding downloading and frame extraction.
+- One real request; no mock results. API round-trip: **5.981 seconds**, excluding downloading and frame extraction.
 - Usage: 3,514 input tokens, 0 output tokens, 0 cached input tokens; 2,020 cache-write tokens reported.
 
 | Visual category | Returned probability |
