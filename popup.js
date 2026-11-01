@@ -57,10 +57,10 @@ function describeDecision(decision, settings, video) {
   if (!video.id) return { title: "Choose a video", text: "Open a YouTube video to check it.", icon: "•", kind: "" };
   if (!settings.protectionOn) return { title: "Protection is off", text: "Turn it on to check videos.", icon: "○", kind: "" };
   if (decision.status === "safe") return { title: "Pawse says: all clear!", text: decision.preview ? "Just a demo · not a real check." : "You’re good to go.", icon: "✓", kind: "good" };
-  if (decision.status === "review") return { title: "Pawse found a bump", text: "Please ask a grown-up to help.", icon: "!", kind: "review" };
-  if (decision.status === "blocked") return { title: "Pawse found a bump", text: "Let’s pick another video together.", icon: "Ⅱ", kind: "blocked" };
+  if (decision.status === "review") return { title: "Pawse time!", text: "Please ask a grown-up to check this video.", icon: "Ⅱ", kind: "review" };
+  if (decision.status === "blocked") return { title: "Let’s pause and pick another", text: "Pawse is looking out for you.", icon: "Ⅱ", kind: "blocked" };
   if (decision.status === "checking") return { title: "Checking…", text: "Wait for Pawse to finish.", icon: "…", kind: "review" };
-  if (decision.status === "connecting") return { title: "Pawse needs a grown-up", text: "Let’s ask them to help us check.", icon: "?", kind: "review" };
+  if (decision.status === "connecting") return { title: "Pawse time!", text: "Let’s ask a grown-up to check this video.", icon: "Ⅱ", kind: "review" };
   if (decision.status === "allowed_once") return { title: "Allowed once", text: "For this session only.", icon: "✓", kind: "good" };
   return { title: "Not connected", text: "Moderation service unavailable.", icon: "…", kind: "" };
 }

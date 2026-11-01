@@ -120,9 +120,9 @@
     const copy = status === "safe"
       ? { title: "All clear!", detail: decision.preview ? "Just a demo." : "You’re good to go." }
       : status === "connecting"
-        ? { title: "Pawse needs a grown-up", detail: "Let’s ask them to help us check." }
+        ? { title: "Pawse time!", detail: "Let’s ask a grown-up to check." }
       : status === "review" || status === "blocked"
-        ? { title: "Pawse found a bump", detail: "Please ask a grown-up to help." }
+        ? { title: "Pawse time!", detail: "Please ask a grown-up to help." }
       : status === "no_video"
         ? { title: "Hi, I’m Pawse.", detail: "Open a video to check it." }
         : { title: "Hi, I’m Pawse.", detail: "Here to help." };
@@ -217,15 +217,15 @@
     pauseVideo();
     const states = {
       connecting: {
-        title: "Pawse needs a grown-up",
-        detail: "Let’s ask them to help us check."
+        title: "Pawse time!",
+        detail: "Let’s ask a grown-up to check this video."
       },
       review: {
-        title: "Pawse found a bump",
-        detail: "Please ask a grown-up to help."
+        title: "Pawse time!",
+        detail: "Let’s ask a grown-up to check this video."
       },
       blocked: {
-        title: "Let’s find another video",
+        title: "Let’s pause and pick another",
         detail: "Pawse is looking out for you."
       }
     };
