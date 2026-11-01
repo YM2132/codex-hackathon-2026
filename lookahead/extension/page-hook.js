@@ -1,36 +1,37 @@
-/* Look-ahead capture hook. Runs in the page's MAIN world at document_start.
+/* Look-ahead capture hook. Runs in every frame's MAIN world at document_start.
  *
- * What it does:
- *  - Wraps MediaSource.prototype.addSourceBuffer / SourceBuffer.prototype.appendBuffer
- *    and keeps a COPY of every encoded chunk the page hands to the browser, together
- *    with the SourceBuffer's MIME type, timestampOffset, and the time range the chunk
- *    added to that SourceBuffer's buffered ranges.
- *  - The original ArrayBuffer is never modified or detached: we copy with slice()
- *    and pass the caller's exact object through to the native appendBuffer.
- *  - Detects playback paths we cannot see from here (MSE in a dedicated worker,
- *    attached via MediaSourceHandle) and reports them instead of failing silently.
- *  - decodeFuture(): replays the captured byte sequence into a brand-new hidden
- *    MediaSource + <video>, seeks THAT element, and draws frames to a canvas.
+ *  - Wraps MediaSource.addSourceBuffer / SourceBuffer.appendBuffer / changeType and keeps a
+ *    COPY of every encoded chunk a page hands to MSE, with MIME type, timestampOffset, append
+ *    mode and the time range each chunk added. The caller's buffer is passed through untouched.
+ *  - Maps each <video> to the MediaSource feeding it (via URL.createObjectURL / srcObject), so
+ *    pages with several players work.
+ *  - Classifies each video's source: 'mse' (capturable), 'progressive' (plain file URL),
+ *    'drm' (EME, cannot decode), 'worker-mse' (MediaSourceHandle, not visible here).
+ *  - decodeFuture(): replays captured bytes into a separate hidden MediaSource + <video>.
  *    The page's own player is never touched.
  */
 (() => {
-  if (window.__lookahead) return;
+  if (window.__lookahead || typeof MediaSource === 'undefined') return;
 
-  const MAX_BYTES_PER_SB = 96 * 1024 * 1024;
+  const MAX_BYTES_PER_SB = 64 * 1024 * 1024;
   const native = {
     addSourceBuffer: MediaSource.prototype.addSourceBuffer,
     appendBuffer: SourceBuffer.prototype.appendBuffer,
     remove: SourceBuffer.prototype.remove,
-    srcObjectSet: Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'srcObject')?.set,
+    changeType: SourceBuffer.prototype.changeType,
+    createObjectURL: URL.createObjectURL,
+    srcObjectDesc: Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'srcObject'),
   };
 
   let nextMsId = 1, nextSbId = 1;
-  const msIds = new WeakMap();
+  const msIds = new WeakMap();           // MediaSource -> id
+  const blobToMs = new Map();            // blob: URL -> MediaSource id
   const sbInfo = new WeakMap();          // SourceBuffer -> record
   const sourceBuffers = [];              // records, in creation order
+  const handleVideos = new WeakSet();    // videos fed by a worker MediaSourceHandle
   const diag = { workersCreated: 0, mediaSourceHandleAttached: false, hookErrors: [],
     workerMseSupported: !!MediaSource.canConstructInDedicatedWorker };
-  let bypass = false;                    // true while our own decoder appends
+  const msId = (ms) => { if (!msIds.has(ms)) msIds.set(ms, nextMsId++); return msIds.get(ms); };
 
   const toU8Copy = (data) => {
     if (data instanceof ArrayBuffer) return new Uint8Array(data.slice(0));
@@ -51,49 +52,53 @@
   const addedRange = (before, after) => {
     let lo = Infinity, hi = -Infinity;
     for (const [s, e] of after) {
-      let covered = before.some(([bs, be]) => bs <= s + 0.01 && be >= e - 0.01);
-      if (!covered) {
-        // find the part not previously covered
-        let ns = s, ne = e;
-        for (const [bs, be] of before) {
-          if (bs <= ns + 0.01 && be > ns) ns = be;
-          if (be >= ne - 0.01 && bs < ne) ne = bs;
-        }
-        if (ne > ns) { lo = Math.min(lo, ns); hi = Math.max(hi, ne); }
+      if (before.some(([bs, be]) => bs <= s + 0.01 && be >= e - 0.01)) continue;
+      let ns = s, ne = e;
+      for (const [bs, be] of before) {
+        if (bs <= ns + 0.01 && be > ns) ns = be;
+        if (be >= ne - 0.01 && bs < ne) ne = bs;
       }
+      if (ne > ns) { lo = Math.min(lo, ns); hi = Math.max(hi, ne); }
     }
     return Number.isFinite(lo) ? [lo, hi] : null;
   };
 
-  try {
+  const wrap = (name, fn) => { try { fn(); } catch (e) { diag.hookErrors.push(`${name}: ${e}`); } };
+
+  wrap('createObjectURL', () => {
+    URL.createObjectURL = function (obj) {
+      const url = Reflect.apply(native.createObjectURL, this, [obj]);
+      if (obj instanceof MediaSource) blobToMs.set(url, msId(obj));
+      return url;
+    };
+  });
+
+  wrap('addSourceBuffer', () => {
     MediaSource.prototype.addSourceBuffer = function (mime) {
       const sb = Reflect.apply(native.addSourceBuffer, this, [mime]);
-      if (bypass) return sb;
-      if (!msIds.has(this)) msIds.set(this, nextMsId++);
-      const rec = { id: nextSbId++, msId: msIds.get(this), mime: String(mime), createdAt: performance.now(),
-        chunks: [], bytes: 0, droppedBytes: 0, appends: 0 };
+      const rec = { id: nextSbId++, msId: msId(this), mime: String(mime), createdAt: performance.now(),
+        chunks: [], bytes: 0, droppedBytes: 0, appends: 0, nextSeq: 0 };
       sbInfo.set(sb, rec);
       sourceBuffers.push(rec);
       return sb;
     };
-  } catch (e) { diag.hookErrors.push('addSourceBuffer: ' + e); }
+  });
 
-  try {
+  wrap('appendBuffer', () => {
     SourceBuffer.prototype.appendBuffer = function (data) {
-      const rec = !bypass && sbInfo.get(this);
+      const rec = sbInfo.get(this);
       if (rec) {
         try {
           const copy = toU8Copy(data);
           if (copy) {
             const before = ranges(this.buffered);
-            const chunk = { seq: rec.appends, at: performance.now(), tso: this.timestampOffset,
+            const chunk = { seq: rec.nextSeq++, at: performance.now(), tso: this.timestampOffset,
               mode: this.mode, init: looksLikeInit(copy), bytes: copy, added: null };
             rec.chunks.push(chunk); rec.bytes += copy.byteLength; rec.appends++;
             const sb = this;
             sb.addEventListener('updateend', () => { chunk.added = addedRange(before, ranges(sb.buffered)); }, { once: true });
-            // Memory cap: drop oldest non-init chunks.
-            while (rec.bytes > MAX_BYTES_PER_SB) {
-              const idx = rec.chunks.findIndex(c => !c.init);
+            while (rec.bytes > MAX_BYTES_PER_SB) {           // memory cap: drop oldest media chunks
+              const idx = rec.chunks.findIndex(c => !c.init && !c.changeType);
               if (idx < 0) break;
               const [old] = rec.chunks.splice(idx, 1);
               rec.bytes -= old.bytes.byteLength; rec.droppedBytes += old.bytes.byteLength;
@@ -103,45 +108,119 @@
       }
       return Reflect.apply(native.appendBuffer, this, [data]);
     };
-  } catch (e) { diag.hookErrors.push('appendBuffer: ' + e); }
+  });
 
-  // Diagnostics for paths this hook cannot observe.
-  try {
+  if (native.changeType) wrap('changeType', () => {
+    SourceBuffer.prototype.changeType = function (mime) {
+      const rec = sbInfo.get(this);
+      if (rec) rec.chunks.push({ seq: rec.nextSeq++, changeType: String(mime), bytes: new Uint8Array(0), init: null });
+      return Reflect.apply(native.changeType, this, [mime]);
+    };
+  });
+
+  // Paths we can't capture from the main thread: detect them so the UI can say so.
+  wrap('Worker', () => {
     const NativeWorker = window.Worker;
-    window.Worker = new Proxy(NativeWorker, { construct(t, a, nt) { diag.workersCreated++; return Reflect.construct(t, a, nt); } });
-  } catch (e) { diag.hookErrors.push('Worker: ' + e); }
-  if (native.srcObjectSet && window.MediaSourceHandle) {
-    try {
-      Object.defineProperty(HTMLMediaElement.prototype, 'srcObject', {
-        ...Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'srcObject'),
-        set(v) { if (v instanceof MediaSourceHandle) diag.mediaSourceHandleAttached = true; return native.srcObjectSet.call(this, v); },
-      });
-    } catch (e) { diag.hookErrors.push('srcObject: ' + e); }
-  }
+    if (NativeWorker) window.Worker = new Proxy(NativeWorker, { construct(t, a, nt) { diag.workersCreated++; return Reflect.construct(t, a, nt); } });
+  });
+  if (native.srcObjectDesc?.set) wrap('srcObject', () => {
+    Object.defineProperty(HTMLMediaElement.prototype, 'srcObject', {
+      ...native.srcObjectDesc,
+      set(v) {
+        if (window.MediaSourceHandle && v instanceof MediaSourceHandle) { diag.mediaSourceHandleAttached = true; handleVideos.add(this); }
+        if (v && this instanceof HTMLVideoElement && !this.__lookaheadDecoder) knownVideos.add(this);
+        return native.srcObjectDesc.set.call(this, v);
+      },
+    });
+  });
 
-  const mainVideo = () => {
-    const vids = [...document.querySelectorAll('video')].filter(v => !v.__lookaheadDecoder);
-    return vids.find(v => v.src && v.src.startsWith('blob:')) || vids[0] || null;
+  // Videos inside shadow DOM (e.g. Reddit's <shreddit-player>) are invisible to querySelectorAll,
+  // so also register any <video> whose src/srcObject the page sets.
+  const knownVideos = new Set();
+  const srcDesc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
+  if (srcDesc?.set) wrap('src', () => {
+    Object.defineProperty(HTMLMediaElement.prototype, 'src', {
+      ...srcDesc,
+      set(v) { if (this instanceof HTMLVideoElement && !this.__lookaheadDecoder) knownVideos.add(this); return srcDesc.set.call(this, v); },
+    });
+  });
+
+  // ---------- video <-> source mapping ----------
+  const allVideos = () => {
+    const set = new Set(document.querySelectorAll('video'));
+    for (const v of knownVideos) { if (v.isConnected) set.add(v); else knownVideos.delete(v); }
+    return [...set].filter(v => !v.__lookaheadDecoder);
   };
 
-  function playerState() {
-    const v = mainVideo();
+  function msOfVideo(v) {
+    const so = native.srcObjectDesc?.get?.call(v);
+    if (so instanceof MediaSource) return msId(so);
+    const src = v.currentSrc || v.src;
+    return src && src.startsWith('blob:') ? (blobToMs.get(src) ?? null) : null;
+  }
+  function recordForVideo(v) {
+    if (!v) return null;
+    const id = msOfVideo(v);
+    if (id == null) return null;
+    return sourceBuffers.filter(r => r.msId === id && r.mime.startsWith('video/') && r.appends > 0).pop() || null;
+  }
+  // Real encryption markers in an init segment: MP4 'encv'/'enca'/'tenc' boxes, WebM ContentEncodings (0x6D80) + ContentEncKeyID (0x47E2).
+  const ascii = (u8, s) => { outer: for (let i = 0; i + s.length <= u8.length; i++) { for (let j = 0; j < s.length; j++) if (u8[i + j] !== s.charCodeAt(j)) continue outer; return true; } return false; };
+  const isEncrypted = (rec) => rec.chunks.some(c => c.init && (c.init === 'mp4'
+    ? (ascii(c.bytes, 'encv') || ascii(c.bytes, 'enca') || ascii(c.bytes, 'tenc'))
+    : (c.bytes.some((b, i) => b === 0x6d && c.bytes[i + 1] === 0x80) && c.bytes.some((b, i) => b === 0x47 && c.bytes[i + 1] === 0xe2))));
+  function classify(v) {
+    if (!v) return { kind: 'none' };
+    if (handleVideos.has(v)) return { kind: 'worker-mse' };
+    const rec = recordForVideo(v);
+    // Some players (e.g. Vimeo) attach MediaKeys even to clear streams, so check the bytes.
+    if (rec) return rec.encrypted ?? (rec.encrypted = isEncrypted(rec)) ? { kind: 'drm' } : { kind: 'mse', rec };
+    if (v.mediaKeys) return { kind: 'drm' };
+    const src = v.currentSrc || v.src || '';
+    if (/^(https?|file|data):/.test(src)) return { kind: 'progressive', url: src };
+    if (src.startsWith('blob:')) return { kind: blobToMs.has(src) ? 'mse-pending' : 'blob-unknown' };
+    if (native.srcObjectDesc?.get?.call(v)) return { kind: 'stream' }; // e.g. webcam MediaStream
+    return { kind: 'none' };
+  }
+  // The video a viewer is most likely watching: playing > started > largest on screen.
+  function pickVideo() {
+    let best = null, bestScore = -1;
+    for (const v of allVideos()) {
+      const r = v.getBoundingClientRect();
+      const area = Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0));
+      if (area < 120 * 68 || v.readyState === 0) continue;
+      const score = area * (v.paused ? 1 : 4) * (v.currentTime > 0 ? 2 : 1);
+      if (score > bestScore) { best = v; bestScore = score; }
+    }
+    return best;
+  }
+
+  function playerState(v = pickVideo()) {
     if (!v) return { hasVideo: false };
     const buffered = ranges(v.buffered);
     const cur = v.currentTime;
     const cover = buffered.find(([s, e]) => s <= cur + 0.05 && e >= cur);
-    return { hasVideo: true, currentTime: cur, paused: v.paused, duration: v.duration,
-      buffered, bufferedUntil: cover ? cover[1] : cur, aheadSeconds: cover ? cover[1] - cur : 0,
-      src: v.src ? v.src.slice(0, 5) : null, srcObject: v.srcObject ? v.srcObject.constructor.name : null };
+    return { hasVideo: true, kind: classify(v).kind, currentTime: cur, paused: v.paused, duration: v.duration,
+      buffered, bufferedUntil: cover ? cover[1] : cur, aheadSeconds: cover ? cover[1] - cur : 0 };
+  }
+
+  // Drop captured media chunks entirely behind `before` seconds (init/changeType markers kept).
+  function prune(rec, before) {
+    for (let i = rec.chunks.length - 1; i >= 0; i--) {
+      const c = rec.chunks[i];
+      if (!c.init && !c.changeType && c.added && c.added[1] < before) {
+        rec.chunks.splice(i, 1); rec.bytes -= c.bytes.byteLength; rec.droppedBytes += c.bytes.byteLength;
+      }
+    }
   }
 
   function summary() {
     return {
-      diag: { ...diag },
-      player: playerState(),
+      url: location.href, diag: { ...diag }, player: playerState(),
       sourceBuffers: sourceBuffers.map(r => ({ id: r.id, msId: r.msId, mime: r.mime, appends: r.appends,
         bytesHeld: r.bytes, droppedBytes: r.droppedBytes, initChunks: r.chunks.filter(c => c.init).length,
-        coveredByCapture: r.chunks.filter(c => c.added).map(c => c.added).reduce((acc, [s, e]) => {
+        changeTypes: r.chunks.filter(c => c.changeType).map(c => c.changeType),
+        coveredByCapture: r.chunks.filter(c => c.added).map(c => c.added).sort((a, b) => a[0] - b[0]).reduce((acc, [s, e]) => {
           const last = acc[acc.length - 1];
           if (last && s <= last[1] + 0.1) last[1] = Math.max(last[1], e); else acc.push([s, e]);
           return acc; }, []),
@@ -149,50 +228,36 @@
     };
   }
 
-  // Latest video SourceBuffer that belongs to the MediaSource currently attached.
-  function activeVideoRecord() {
-    const vids = sourceBuffers.filter(r => r.mime.startsWith('video/') && r.appends > 0);
-    if (!vids.length) return null;
-    const lastMs = Math.max(...vids.map(r => r.msId));
-    return vids.filter(r => r.msId === lastMs).pop();
-  }
-
   const once = (target, ev, ms = 8000) => new Promise((res, rej) => {
     const t = setTimeout(() => rej(new Error('timeout waiting for ' + ev)), ms);
     target.addEventListener(ev, (e) => { clearTimeout(t); res(e); }, { once: true });
   });
 
-  /* Replay captured encoded bytes into an isolated decoder and grab frames.
-   * times: absolute media timestamps (seconds). */
-  async function decodeFuture({ times, maxWidth = 640, quality = 0.8 } = {}) {
-    const rec = activeVideoRecord();
-    if (!rec) throw new Error('no captured video SourceBuffer (worker MSE or not yet started?)');
+  // Append one captured chunk (or replay a changeType marker) into a decoder SourceBuffer.
+  async function replayChunk(sb, c) {
+    if (c.changeType) { Reflect.apply(native.changeType, sb, [c.changeType]); return; }
+    if (!c.init && sb.mode !== c.mode) sb.mode = c.mode;
+    if (sb.timestampOffset !== c.tso) sb.timestampOffset = c.tso;
+    Reflect.apply(native.appendBuffer, sb, [c.bytes]);
+    await once(sb, 'updateend');
+  }
+
+  /* One-shot: replay captured bytes into an isolated decoder and grab frames at `times`. */
+  async function decodeFuture({ times, maxWidth = 640, quality = 0.8, video } = {}) {
+    const rec = recordForVideo(video || pickVideo()) || sourceBuffers.filter(r => r.mime.startsWith('video/') && r.appends > 0).pop();
+    if (!rec) throw new Error('no captured video SourceBuffer for this player');
     const v = document.createElement('video');
-    v.__lookaheadDecoder = true; v.muted = true; v.playsInline = true; v.preload = 'auto';
+    v.__lookaheadDecoder = true; v.muted = true; v.preload = 'auto';
     const ms = new MediaSource();
-    v.src = URL.createObjectURL(ms);
+    v.src = Reflect.apply(native.createObjectURL, URL, [ms]);
     await once(ms, 'sourceopen');
-    bypass = true;
-    let sb;
+    const sb = Reflect.apply(native.addSourceBuffer, ms, [rec.mime]);
     const log = { replayedChunks: 0, replayedBytes: 0, errors: [] };
-    try {
-      sb = ms.addSourceBuffer(rec.mime);
-      // Replay from the most recent init segment onward, preserving offsets & order.
-      let start = 0;
-      for (let i = rec.chunks.length - 1; i >= 0; i--) if (rec.chunks[i].init) { start = i; break; }
-      // Earlier init chunks may still be needed if quality switched; replay everything since the first init.
-      start = rec.chunks.findIndex(c => c.init); if (start < 0) start = 0;
-      for (let i = start; i < rec.chunks.length; i++) {
-        const c = rec.chunks[i];
-        try {
-          if (sb.mode !== c.mode && !c.init) sb.mode = c.mode;
-          if (sb.timestampOffset !== c.tso) sb.timestampOffset = c.tso;
-          Reflect.apply(native.appendBuffer, sb, [c.bytes]);
-          await once(sb, 'updateend');
-          log.replayedChunks++; log.replayedBytes += c.bytes.byteLength;
-        } catch (e) { log.errors.push(`chunk ${c.seq}: ${e.message || e}`); if (log.errors.length > 5) break; }
-      }
-    } finally { bypass = false; }
+    let start = rec.chunks.findIndex(c => c.init); if (start < 0) start = 0;
+    for (let i = start; i < rec.chunks.length; i++) {
+      try { await replayChunk(sb, rec.chunks[i]); log.replayedChunks++; log.replayedBytes += rec.chunks[i].bytes.byteLength; }
+      catch (e) { log.errors.push(`chunk ${rec.chunks[i].seq}: ${e.message || e}`); if (log.errors.length > 5) break; }
+    }
     const decoderBuffered = ranges(sb.buffered);
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -215,11 +280,11 @@
     return { mime: rec.mime, sbId: rec.id, decoderBuffered, ...log, frames };
   }
 
-  // Raw bytes for offline verification (ffmpeg). Returns base64 of init + chunks [from, to).
+  // Raw bytes for offline verification (ffmpeg).
   function exportChunks(sbId, from = 0, to = Infinity) {
     const rec = sourceBuffers.find(r => r.id === sbId);
     if (!rec) return null;
-    return rec.chunks.slice(from, to).map(c => {
+    return rec.chunks.filter(c => !c.changeType).slice(from, to).map(c => {
       let s = ''; const b = c.bytes;
       for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000));
       return { seq: c.seq, tso: c.tso, init: c.init, added: c.added, b64: btoa(s) };
@@ -227,19 +292,11 @@
   }
 
   Object.defineProperty(window, '__lookahead', { value: Object.freeze({
-    summary, playerState, decodeFuture, exportChunks, activeVideoRecord: () => activeVideoRecord()?.id ?? null,
-    // Internals for the live preview overlay (overlay.js). Native functions bypass our hooks.
-    _internal: Object.freeze({ activeRecord: activeVideoRecord, mainVideo, ranges,
-      nativeAddSourceBuffer: native.addSourceBuffer, nativeAppend: native.appendBuffer, nativeRemove: native.remove }),
+    summary, playerState, decodeFuture, exportChunks,
+    activeVideoRecord: () => recordForVideo(pickVideo())?.id ?? null,
+    _internal: Object.freeze({ pickVideo, classify, recordForVideo, ranges, prune, replayChunk,
+      createObjectURL: (o) => Reflect.apply(native.createObjectURL, URL, [o]),
+      nativeAddSourceBuffer: native.addSourceBuffer, nativeRemove: native.remove,
+      mainVideo: pickVideo, activeRecord: () => recordForVideo(pickVideo()) }),
   }) });
-
-  // Bridge to the extension's isolated world.
-  window.addEventListener('message', async (ev) => {
-    if (ev.source !== window || ev.data?.tag !== 'lookahead-req') return;
-    const { id, op, args } = ev.data;
-    let result, error;
-    try { result = op === 'summary' ? summary() : op === 'decodeFuture' ? await decodeFuture(args) : undefined; }
-    catch (e) { error = String(e.message || e); }
-    window.postMessage({ tag: 'lookahead-res', id, result, error }, '*');
-  });
 })();
