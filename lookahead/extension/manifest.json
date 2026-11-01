@@ -1,11 +1,37 @@
 {
   "manifest_version": 3,
-  "name": "YouTube Look-ahead Capture (PoC)",
-  "version": "0.2.0",
-  "description": "Copies encoded media appended to MSE SourceBuffers and decodes future frames in an isolated hidden decoder.",
-  "permissions": [],
-  "host_permissions": ["https://www.youtube.com/*"],
+  "name": "Video Look-ahead Preview (PoC)",
+  "version": "0.4.0",
+  "description": "Shows a frame a few seconds ahead of the playhead. Runs only on sites where it has been tested.",
+  "permissions": [
+    "activeTab"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Look-ahead preview"
+  },
   "content_scripts": [
-    { "matches": ["https://www.youtube.com/*"], "js": ["page-hook.js", "overlay.js"], "run_at": "document_start", "world": "MAIN", "all_frames": true }
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://www.youtubekids.com/*",
+        "https://www.tiktok.com/*",
+        "https://www.instagram.com/*",
+        "https://x.com/*",
+        "https://www.reddit.com/*",
+        "https://www.snapchat.com/*",
+        "https://www.dailymotion.com/*",
+        "https://geo.dailymotion.com/*",
+        "https://hlsjs.video-dev.org/*",
+        "https://reference.dashif.org/*"
+      ],
+      "js": [
+        "page-hook.js",
+        "overlay.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    }
   ]
 }

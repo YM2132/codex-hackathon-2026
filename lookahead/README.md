@@ -1,7 +1,22 @@
-# YouTube look-ahead capture (PoC)
+# Video look-ahead capture (PoC)
 
 Copies the encoded media YouTube hands to MSE (`SourceBuffer.appendBuffer`) and decodes
 *future* frames in a separate hidden `<video>`, without moving YouTube's own player.
+
+## Supported sites
+The extension only runs on these sites (everything else is treated as unsupported):
+
+- YouTube (`www.youtube.com`, including embeds)
+- YouTube Kids (`www.youtubekids.com`)
+- TikTok (`www.tiktok.com`)
+- Instagram (`www.instagram.com`)
+- X (`x.com`)
+- Reddit (`www.reddit.com`)
+- Snapchat (`www.snapchat.com`)
+- Dailymotion (`www.dailymotion.com`, player on `geo.dailymotion.com`)
+- Test players: hls.js demo (`hlsjs.video-dev.org`), dash.js reference (`reference.dashif.org`)
+
+Test results and unsupported sites are in the **Site support** section below.
 
 ## Demo: live look-ahead preview
 1. `chrome://extensions` → Developer mode → **Load unpacked** → select `lookahead/extension/`.
@@ -25,8 +40,32 @@ node run-youtube.mjs [videoId]      # HEADFUL=1 to watch it
 Writes `out/<video>-<ts>/results.json`, the decoded `future_*.jpg`, `player_at_*.jpg` (post-hoc check),
 and `captured_video.mp4` (raw captured bytes, independently decodable with ffmpeg).
 
+## Site support (tested 2026-11-01, Chrome 156: automated via `harness/run-site.mjs` or in real Chrome)
+The extension **only injects on the sites marked Enabled** (`manifest.json` → `content_scripts.matches`).
+Everywhere else it does nothing; the toolbar popup says the site is unsupported and its videos are not scanned.
+
+| Site / player | Result | Enabled |
+|---|---|---|
+| YouTube | Works: +5s frame, ~25-30 ms per frame | yes |
+| YouTube Kids | Works (real Chrome): +5s, ~29s buffered ahead, 24 ms | yes |
+| TikTok | Works: +5s (~8s buffered ahead), ~45-60 ms | yes |
+| Instagram Reels | Works (real Chrome, logged in): +5s, ~17s buffered ahead, VP9 | yes |
+| X | Works (manual test in real Chrome) | yes |
+| Reddit | Works (manual test in real Chrome; finds videos inside shadow DOM) | yes |
+| Snapchat Spotlight | Works via plain-file path; short clips cap the preview at clip end | yes |
+| Dailymotion | Works inside geo.dailymotion.com player, but only ~2.7s buffered ahead (shows "max buffered") | yes |
+| hls.js demo / dash.js reference | Work; preview limited by each player's buffer | yes (test players) |
+| Facebook | Fails: MSE runs in a worker (MediaSourceHandle), detected but not captured | no |
+| Twitch | Fails: MSE runs in a worker (MediaSourceHandle) | no |
+| PBS Kids | Not tested: video is US-only (geo-blocked) | no |
+| Vimeo | Stream flagged as encrypted (encv/enca/tenc), treated as DRM | no |
+| Plain large files, Wikimedia | Second decoder stalls on large files; needs range-fetch + WebCodecs | no |
+| DRM (Netflix, Disney+, Prime, paid YouTube) | Not possible: only the browser's CDM can decode | no |
+
+To enable a site after verifying it by hand: add its pattern to `matches` and reload the extension.
+
 ## Limitations
-- Only sees MSE on the main thread. Worker MSE (`MediaSourceHandle`) is detected and reported, not captured.
-- Encrypted (EME/DRM) media can be copied but not decoded.
-- Look-ahead is limited by YouTube's own readahead (~20s observed while paused).
+- Look-ahead is bounded by each player's own readahead.
 - Video only; audio buffers are captured but not analysed yet.
+- Unsupported sites are currently just ignored. In the child-safety product they should be treated as
+  "unscanned" (blocked or flagged by policy), not silently allowed.
