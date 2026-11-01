@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Look-ahead Capture (PoC)",
+  "version": "0.2.0",
+  "description": "Copies encoded media appended to MSE SourceBuffers and decodes future frames in an isolated hidden decoder.",
+  "permissions": [],
+  "host_permissions": ["https://www.youtube.com/*"],
+  "content_scripts": [
+    { "matches": ["https://www.youtube.com/*"], "js": ["page-hook.js", "overlay.js"], "run_at": "document_start", "world": "MAIN", "all_frames": true }
+  ]
+}
