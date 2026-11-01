@@ -7,6 +7,9 @@
   let shadow;
   let lastStatus = "";
   let refreshTimer;
+  let buddyHost;
+  let buddyShadow;
+  let buddyPanelOpen = false;
   const pauseStatuses = new Set(["connecting", "review", "blocked"]);
 
   function videoIdFromUrl() {
@@ -18,6 +21,93 @@
 
   function player() {
     return document.querySelector("#movie_player") || document.querySelector(".html5-video-player");
+  }
+
+  function ensureBuddy() {
+    if (buddyHost?.isConnected) return;
+    buddyHost = document.createElement("div");
+    buddyHost.id = "sprout-buddy-root";
+    buddyShadow = buddyHost.attachShadow({ mode: "open" });
+    buddyShadow.innerHTML = `
+      <style>
+        :host { all:initial; position:fixed; right:18px; bottom:18px; z-index:2147483000; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+        :host([hidden]) { display:none !important; }
+        * { box-sizing:border-box; }
+        .pet { display:grid; width:62px; height:62px; place-items:center; overflow:hidden; padding:0; border:3px solid white; border-radius:50%; background:#eff8ee; box-shadow:0 5px 22px #173d3840; cursor:pointer; animation:buddy-bob 3.2s ease-in-out infinite; }
+        .pet img { width:100%; height:100%; object-fit:cover; }
+        .pet:focus-visible,.close:focus-visible,.action:focus-visible { outline:3px solid #70c7a4; outline-offset:3px; }
+        @keyframes buddy-bob { 0%,100% { transform:translateY(1px); } 50% { transform:translateY(-4px); } }
+        @media (prefers-reduced-motion: reduce) { .pet { animation:none; } }
+        .panel { position:absolute; right:0; bottom:74px; width:min(292px,calc(100vw - 28px)); padding:16px; border:1px solid #e5e9e2; border-radius:20px; background:#fffdf8; color:#183a3c; box-shadow:0 14px 48px #102a2b35; }
+        .panel[hidden] { display:none !important; }
+        .panel-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+        .mini-pet { width:42px; height:42px; flex:0 0 42px; border-radius:13px; object-fit:cover; }
+        .panel-title { margin:0; color:#17333b; font-size:15px; font-weight:750; line-height:1.25; }
+        .panel-detail { margin:0; color:#5d6c70; font-size:12px; line-height:1.5; }
+        .panel-actions { display:grid; gap:7px; margin-top:13px; }
+        .action { min-height:38px; border:0; border-radius:11px; background:#176554; color:white; font:700 12px system-ui,sans-serif; cursor:pointer; }
+        .action.secondary { background:#edf3ef; color:#254840; }
+        .close { position:absolute; top:8px; right:9px; width:27px; height:27px; border:0; border-radius:50%; background:transparent; color:#637175; font:20px system-ui,sans-serif; cursor:pointer; }
+      </style>
+      <button class="pet" id="buddyToggle" aria-label="Open Sprout helper" aria-expanded="false"><img alt=""></button>
+      <section class="panel" id="buddyPanel" role="dialog" aria-label="Sprout helper" hidden>
+        <button class="close" id="buddyClose" aria-label="Close Sprout helper">×</button>
+        <div class="panel-head"><img class="mini-pet" alt=""><h2 class="panel-title" id="buddyTitle"></h2></div>
+        <p class="panel-detail" id="buddyDetail"></p>
+        <div class="panel-actions">
+          <button class="action" id="buddyAsk">Ask a grown-up</button>
+          <button class="action secondary" id="buddyBack">Go back to videos</button>
+        </div>
+      </section>`;
+    const mascotUrl = chrome.runtime.getURL("assets/sprout-mascot-512.png");
+    buddyShadow.querySelectorAll("img").forEach((img) => { img.src = mascotUrl; });
+    document.documentElement.appendChild(buddyHost);
+    const toggle = buddyShadow.getElementById("buddyToggle");
+    const panel = buddyShadow.getElementById("buddyPanel");
+    toggle.addEventListener("click", () => {
+      buddyPanelOpen = !buddyPanelOpen;
+      panel.hidden = !buddyPanelOpen;
+      toggle.setAttribute("aria-expanded", String(buddyPanelOpen));
+    });
+    buddyShadow.getElementById("buddyClose").addEventListener("click", closeBuddyPanel);
+    buddyShadow.getElementById("buddyAsk").addEventListener("click", (event) => requestAdultHelp(event.currentTarget));
+    buddyShadow.getElementById("buddyBack").addEventListener("click", goBack);
+  }
+
+  function closeBuddyPanel() {
+    buddyPanelOpen = false;
+    if (!buddyShadow) return;
+    buddyShadow.getElementById("buddyPanel").hidden = true;
+    buddyShadow.getElementById("buddyToggle").setAttribute("aria-expanded", "false");
+  }
+
+  function updateBuddy(status, decision = {}) {
+    ensureBuddy();
+    if (status === "off" || pauseStatuses.has(status)) {
+      buddyHost.hidden = true;
+      closeBuddyPanel();
+      return;
+    }
+    buddyHost.hidden = false;
+    const copy = status === "safe"
+      ? { title: "All set for this profile", detail: decision.preview ? "This is only a sample state, not a model result." : "Sprout checked this video for your family." }
+      : status === "no_video"
+        ? { title: "Hi, I’m Sprout!", detail: "I’m here to help your family choose videos. Open a video to check its Sprout status." }
+        : { title: "I’m Sprout!", detail: "I’m here to help your family choose videos." };
+    buddyShadow.getElementById("buddyTitle").textContent = copy.title;
+    buddyShadow.getElementById("buddyDetail").textContent = copy.detail;
+    buddyShadow.getElementById("buddyAsk").hidden = status !== "safe";
+    buddyShadow.getElementById("buddyBack").hidden = status !== "safe";
+    buddyShadow.getElementById("buddyAsk").textContent = "Ask a grown-up";
+  }
+
+  function requestAdultHelp(button) {
+    if (!currentVideoId) return;
+    chrome.runtime.sendMessage({ type: "request_adult_review", videoId: currentVideoId }).catch(() => {});
+    if (button) {
+      button.textContent = "Please get your grown-up";
+      button.disabled = true;
+    }
   }
 
   function ensureOverlay() {
@@ -85,6 +175,7 @@
     const surface = shadow.getElementById("surface");
     const status = decision?.status || "connecting";
     lastStatus = status;
+    updateBuddy(status, decision);
     if (["off", "allowed_once"].includes(status)) {
       root.remove();
       root = shadow = null;
@@ -140,7 +231,7 @@
     surface.querySelector('[data-action="back"]')?.addEventListener("click", goBack);
     surface.querySelector('[data-action="wait"]')?.addEventListener("click", (event) => {
       const button = event.currentTarget;
-      chrome.runtime.sendMessage({ type: "request_adult_review", videoId: currentVideoId }).catch(() => {});
+      requestAdultHelp(null);
       button.textContent = "Please get your grown-up";
       button.disabled = true;
       const note = surface.querySelector(".kid-note");
@@ -153,7 +244,10 @@
   async function refresh() {
     const id = videoIdFromUrl();
     if (!id) {
-      root?.remove(); root = shadow = null; currentVideoId = ""; return;
+      root?.remove(); root = shadow = null; currentVideoId = ""; lastStatus = "";
+      const prefs = await chrome.runtime.sendMessage({ type: "get_settings" }).catch(() => ({}));
+      updateBuddy(prefs.protectionOn && prefs.setupComplete ? "no_video" : "off");
+      return;
     }
     if (id === currentVideoId && lastStatus) return;
     currentVideoId = id;

@@ -1,7 +1,8 @@
-const DEFAULTS = { setupComplete: false, protectionOn: false, ageBand: "3-5", previewScenario: "off" };
+const DEFAULTS = { setupComplete: false, protectionOn: false, ageBand: "3-5", previewScenario: "off", customRules: [] };
 const AGE_LABELS = { "3-5": "Ages 3–5", "6-8": "Ages 6–8", "9-12": "Ages 9–12" };
 const $ = (id) => document.getElementById(id);
 const extensionMode = typeof chrome !== "undefined" && !!chrome.runtime?.sendMessage;
+let renderedRulesKey = null;
 
 async function getSettings() {
   if (extensionMode) return { ...DEFAULTS, ...(await chrome.runtime.sendMessage({ type: "get_settings" })) };
@@ -68,6 +69,45 @@ function toast(message) {
   clearTimeout(toast.timer); toast.timer = setTimeout(() => el.classList.remove("visible"), 2000);
 }
 
+function renderRules(rules = []) {
+  const key = JSON.stringify(rules);
+  if (key === renderedRulesKey) return;
+  renderedRulesKey = key;
+  const list = $("ruleList");
+  list.replaceChildren();
+  if (!rules.length) {
+    const empty = document.createElement("p");
+    empty.className = "rule-empty";
+    empty.textContent = "No family rules yet. Add one above.";
+    list.append(empty);
+    return;
+  }
+  rules.forEach((rule, index) => {
+    const row = document.createElement("div");
+    row.className = "rule-item";
+    const text = document.createElement("p");
+    text.textContent = rule;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "remove-rule";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", `Remove rule ${index + 1}`);
+    remove.dataset.index = String(index);
+    remove.addEventListener("click", async (event) => {
+      const ruleIndex = Number(event.currentTarget.dataset.index);
+      const current = await getSettings();
+      const nextRules = [...(current.customRules || [])];
+      nextRules.splice(ruleIndex, 1);
+      await saveSettings({ customRules: nextRules });
+      refreshTab();
+      render();
+      toast("Family rule removed.");
+    });
+    row.append(text, remove);
+    list.append(row);
+  });
+}
+
 async function render() {
   const settings = await getSettings();
   const video = await activeVideo();
@@ -82,6 +122,7 @@ async function render() {
   $("profileTitle").textContent = AGE_LABELS[settings.ageBand] || AGE_LABELS["3-5"];
   $("ageSelect").value = settings.ageBand;
   $("previewSelect").value = settings.previewScenario;
+  renderRules(Array.isArray(settings.customRules) ? settings.customRules : []);
   $("protectionToggle").setAttribute("aria-checked", String(settings.protectionOn));
   $("protectionHint").classList.toggle("on", settings.protectionOn);
   $("protectionHint").lastElementChild.textContent = settings.protectionOn ? "Protection is on for YouTube" : "Protection is off";
@@ -120,6 +161,29 @@ $("ageSelect").addEventListener("change", async (event) => {
 $("previewSelect").addEventListener("change", async (event) => {
   await saveSettings({ previewScenario: event.target.value });
   refreshTab(); render();
+});
+
+$("ruleInput").addEventListener("input", (event) => {
+  $("ruleCharCount").textContent = `${event.target.value.length} / 280`;
+});
+
+$("ruleForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = $("ruleInput");
+  const rule = input.value.trim();
+  if (!rule) { toast("Write a rule first."); input.focus(); return; }
+  const current = await getSettings();
+  const rules = Array.isArray(current.customRules) ? current.customRules : [];
+  if (rules.length >= 10) { toast("You can save up to 10 family rules."); return; }
+  if (rules.some((saved) => saved.toLocaleLowerCase() === rule.toLocaleLowerCase())) {
+    toast("That rule is already saved."); return;
+  }
+  await saveSettings({ customRules: [...rules, rule] });
+  input.value = "";
+  $("ruleCharCount").textContent = "0 / 280";
+  refreshTab();
+  render();
+  toast("Family rule saved.");
 });
 
 async function refreshTab() {

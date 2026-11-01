@@ -2,7 +2,8 @@ const DEFAULT_SETTINGS = {
   setupComplete: false,
   protectionOn: false,
   ageBand: "3-5",
-  previewScenario: "off"
+  previewScenario: "off",
+  customRules: []
 };
 
 const PREVIEW_STATES = {
@@ -141,7 +142,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 /*
  * Algorithm team integration contract:
  * replace the preview branch in decide() with a call that accepts videoId and
- * the selected ageBand, then returns {status, title, detail, preview:false}.
+ * the selected ageBand and customRules, then returns
+ * {status, title, detail, preview:false}. Custom rules are parent-authored
+ * plain-language preferences stored in chrome.storage.sync.
  * Keep provider credentials out of this extension package; call an authenticated
  * team service or a protected backend instead of embedding an API key here.
  */

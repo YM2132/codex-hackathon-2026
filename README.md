@@ -1,6 +1,6 @@
 # Sprout family mode — YouTube extension prototype
 
-Sprout adds a parent-controlled pause and review flow to YouTube. This branch focuses on the interface and demo path; it does not call a moderation model yet. An original Images 2 mascot appears on the setup screen and pause card, with a subtle reduced-motion-aware float.
+Sprout adds a parent-controlled pause and review flow to YouTube. This branch focuses on the interface and demo path; it does not call a moderation model yet. An original Images 2 mascot appears in the extension toolbar, as a small YouTube companion, and on the pause card.
 
 ## Parent and child flow
 
@@ -9,6 +9,7 @@ Sprout adds a parent-controlled pause and review flow to YouTube. This branch fo
 3. Until the algorithm service is connected, the page shows a clear connection state. The popup's **Preview the experience** menu can switch among sample states for a demo; each sample is labeled and does not represent a model prediction.
 4. Review, blocked, and service-unavailable states pause playback and show Sprout with a short, child-friendly next step. The child can ask a grown-up (which adds a toolbar badge) or go back to videos.
 5. The parent opens the Sprout toolbar popup to see the state and any help request. They can allow the current video once, go back, or change the age profile or protection setting.
+6. Parents can add up to ten plain-language family rules in the popup. The rules are saved in Chrome sync settings for the algorithm service to consume when it is connected.
 
 ## Load in Chrome
 
@@ -20,7 +21,7 @@ Sprout adds a parent-controlled pause and review flow to YouTube. This branch fo
 
 ## Algorithm handoff
 
-The adapter point is `decide()` in `service-worker.js`. It currently returns either a non-connected state or an explicit preview state. Replace the non-connected branch with the team's service call. The UI contract is:
+The adapter point is `decide()` in `service-worker.js`. It currently returns either a non-connected state or an explicit preview state. Replace the non-connected branch with the team's service call using the video ID, age band, and parent-authored `customRules`. The UI contract is:
 
 ```js
 { status: "safe" | "review" | "blocked", preview: false }
