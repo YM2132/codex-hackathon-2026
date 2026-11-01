@@ -4,6 +4,8 @@
 
 One Chrome extension combining Raja’s Pawse dog mascot, four animated states, and parent controls, buffered video capture, and the live OpenAI Decisions classifier. Integration branch: `feat/unified-sprout-extension`.
 
+**Team agents: read [AGENT_HANDOFF.md](AGENT_HANDOFF.md)** for branch provenance, integration contracts, verified behavior, and known gaps before merging changes.
+
 ## Run the unified extension
 
 ```sh
