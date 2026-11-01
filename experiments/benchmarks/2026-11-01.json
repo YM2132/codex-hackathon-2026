@@ -1,0 +1,1041 @@
+{
+  "started_at": "2026-11-01T14:45:50.043954+00:00",
+  "endpoint": "https://api.openai.com/v1/decisions",
+  "model": "gpt-6-luna",
+  "source_url": "https://www.youtube.com/watch?v=wiiFgsDJ8xk",
+  "source_start": 76.0,
+  "source_end": 102.0,
+  "width_pixels": 512,
+  "questions": 9,
+  "repeats": 5,
+  "seed": 42,
+  "sample_timestamps": {
+    "1": [
+      88.0
+    ],
+    "3": [
+      76.0,
+      88.0,
+      100.0
+    ],
+    "5": [
+      76.0,
+      82.0,
+      88.0,
+      94.0,
+      100.0
+    ],
+    "10": [
+      76.0,
+      78.0,
+      82.0,
+      84.0,
+      86.0,
+      90.0,
+      92.0,
+      94.0,
+      98.0,
+      100.0
+    ],
+    "13": [
+      76.0,
+      78.0,
+      80.0,
+      82.0,
+      84.0,
+      86.0,
+      88.0,
+      90.0,
+      92.0,
+      94.0,
+      96.0,
+      98.0,
+      100.0
+    ]
+  },
+  "method": "Sequential calls; counts shuffled each round; one pooled HTTP client; no retries or warmup. Timer surrounds POST through full response body receipt. Payload encoding, image extraction, downloading, and response parsing excluded. Network, upload, connection establishment when needed, and server processing included. Cache not disabled; observed cached tokens recorded per call. Frame subsets span the same prepared clip; visual content varies with sample count.",
+  "summary": [
+    {
+      "frames": 1,
+      "successes": 5,
+      "failures": 0,
+      "median_seconds": 0.8120991250034422,
+      "mean_seconds": 0.7619177250191569,
+      "min_seconds": 0.5065813330002129,
+      "max_seconds": 1.0639218750875443,
+      "request_bytes": 18583,
+      "cache_hit_calls": 0,
+      "observed_uncached_median_seconds": 0.8120991250034422,
+      "observed_cached_median_seconds": null
+    },
+    {
+      "frames": 3,
+      "successes": 5,
+      "failures": 0,
+      "median_seconds": 0.6153323329053819,
+      "mean_seconds": 0.782529016584158,
+      "min_seconds": 0.5755405409727246,
+      "max_seconds": 1.1228203331120312,
+      "request_bytes": 60352,
+      "cache_hit_calls": 0,
+      "observed_uncached_median_seconds": 0.6153323329053819,
+      "observed_cached_median_seconds": null
+    },
+    {
+      "frames": 5,
+      "successes": 5,
+      "failures": 0,
+      "median_seconds": 0.427560708951205,
+      "mean_seconds": 0.735937233408913,
+      "min_seconds": 0.3214131249114871,
+      "max_seconds": 1.5897128749638796,
+      "request_bytes": 94632,
+      "cache_hit_calls": 0,
+      "observed_uncached_median_seconds": 0.427560708951205,
+      "observed_cached_median_seconds": null
+    },
+    {
+      "frames": 10,
+      "successes": 5,
+      "failures": 0,
+      "median_seconds": 0.8755654159467667,
+      "mean_seconds": 1.0553486577700824,
+      "min_seconds": 0.5888140408787876,
+      "max_seconds": 2.1693065410945565,
+      "request_bytes": 183978,
+      "cache_hit_calls": 4,
+      "observed_uncached_median_seconds": 2.1693065410945565,
+      "observed_cached_median_seconds": 0.7964348120149225
+    },
+    {
+      "frames": 13,
+      "successes": 5,
+      "failures": 0,
+      "median_seconds": 1.033021958079189,
+      "mean_seconds": 1.3903244081418962,
+      "min_seconds": 0.49864312494173646,
+      "max_seconds": 3.02612116583623,
+      "request_bytes": 234032,
+      "cache_hit_calls": 5,
+      "observed_uncached_median_seconds": null,
+      "observed_cached_median_seconds": 1.033021958079189
+    }
+  ],
+  "trials": [
+    {
+      "order": 1,
+      "repeat": 1,
+      "frame_count": 10,
+      "request_bytes": 183978,
+      "valid": true,
+      "started_at": "2026-11-01T14:45:50.106710+00:00",
+      "elapsed_seconds": 2.1693065410945565,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.97,
+        "sexual_content": 0.0,
+        "frightening_content": 0.36,
+        "dangerous_behavior": 0.16,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 3058,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 1564,
+          "cache_write_tokens_details": {
+            "ttl_30m_tokens": 1564,
+            "ttl_12h_tokens": 0
+          }
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 3058
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 2,
+      "repeat": 1,
+      "frame_count": 3,
+      "request_bytes": 60352,
+      "valid": true,
+      "started_at": "2026-11-01T14:45:52.277425+00:00",
+      "elapsed_seconds": 1.1228203331120312,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.03,
+        "sexual_content": 0.0,
+        "frightening_content": 0.06,
+        "dangerous_behavior": 0.08,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 1994,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1994
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 3,
+      "repeat": 1,
+      "frame_count": 5,
+      "request_bytes": 94632,
+      "valid": true,
+      "started_at": "2026-11-01T14:45:53.401833+00:00",
+      "elapsed_seconds": 1.5897128749638796,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.11,
+        "sexual_content": 0.0,
+        "frightening_content": 0.14,
+        "dangerous_behavior": 0.06,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 2298,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2298
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 4,
+      "repeat": 1,
+      "frame_count": 13,
+      "request_bytes": 234032,
+      "valid": true,
+      "started_at": "2026-11-01T14:45:54.992191+00:00",
+      "elapsed_seconds": 3.02612116583623,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.96,
+        "sexual_content": 0.0,
+        "frightening_content": 0.44,
+        "dangerous_behavior": 0.13,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 3514,
+        "input_tokens_details": {
+          "cached_tokens": 2020,
+          "cache_write_tokens": 0,
+          "cache_write_tokens_details": {
+            "ttl_30m_tokens": 0,
+            "ttl_12h_tokens": 0
+          }
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 3514
+      },
+      "cached_tokens": 2020,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 5,
+      "repeat": 1,
+      "frame_count": 1,
+      "request_bytes": 18583,
+      "valid": true,
+      "started_at": "2026-11-01T14:45:58.019048+00:00",
+      "elapsed_seconds": 0.8579380421433598,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.29,
+        "sexual_content": 0.0,
+        "frightening_content": 0.01,
+        "dangerous_behavior": 0.01,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 1690,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1690
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 6,
+      "repeat": 2,
+      "frame_count": 10,
+      "request_bytes": 183978,
+      "valid": true,
+      "started_at": "2026-11-01T14:45:58.877888+00:00",
+      "elapsed_seconds": 0.9257530828472227,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.97,
+        "sexual_content": 0.0,
+        "frightening_content": 0.36,
+        "dangerous_behavior": 0.16,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 3058,
+        "input_tokens_details": {
+          "cached_tokens": 1564,
+          "cache_write_tokens": 0,
+          "cache_write_tokens_details": {
+            "ttl_30m_tokens": 0,
+            "ttl_12h_tokens": 0
+          }
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 3058
+      },
+      "cached_tokens": 1564,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 7,
+      "repeat": 2,
+      "frame_count": 5,
+      "request_bytes": 94632,
+      "valid": true,
+      "started_at": "2026-11-01T14:45:59.804757+00:00",
+      "elapsed_seconds": 0.9907106661703438,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.11,
+        "sexual_content": 0.0,
+        "frightening_content": 0.14,
+        "dangerous_behavior": 0.06,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 2298,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2298
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 8,
+      "repeat": 2,
+      "frame_count": 1,
+      "request_bytes": 18583,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:00.796349+00:00",
+      "elapsed_seconds": 0.5065813330002129,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.29,
+        "sexual_content": 0.0,
+        "frightening_content": 0.01,
+        "dangerous_behavior": 0.01,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 1690,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1690
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 9,
+      "repeat": 2,
+      "frame_count": 13,
+      "request_bytes": 234032,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:01.303941+00:00",
+      "elapsed_seconds": 1.6730071669444442,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.96,
+        "sexual_content": 0.0,
+        "frightening_content": 0.44,
+        "dangerous_behavior": 0.13,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 3514,
+        "input_tokens_details": {
+          "cached_tokens": 2020,
+          "cache_write_tokens": 0,
+          "cache_write_tokens_details": {
+            "ttl_30m_tokens": 0,
+            "ttl_12h_tokens": 0
+          }
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 3514
+      },
+      "cached_tokens": 2020,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 10,
+      "repeat": 2,
+      "frame_count": 3,
+      "request_bytes": 60352,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:02.978231+00:00",
+      "elapsed_seconds": 0.6027386670466512,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.03,
+        "sexual_content": 0.0,
+        "frightening_content": 0.06,
+        "dangerous_behavior": 0.08,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 1994,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1994
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 11,
+      "repeat": 3,
+      "frame_count": 10,
+      "request_bytes": 183978,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:03.582119+00:00",
+      "elapsed_seconds": 0.8755654159467667,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.97,
+        "sexual_content": 0.0,
+        "frightening_content": 0.36,
+        "dangerous_behavior": 0.16,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 3058,
+        "input_tokens_details": {
+          "cached_tokens": 1564,
+          "cache_write_tokens": 0,
+          "cache_write_tokens_details": {
+            "ttl_30m_tokens": 0,
+            "ttl_12h_tokens": 0
+          }
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 3058
+      },
+      "cached_tokens": 1564,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 12,
+      "repeat": 3,
+      "frame_count": 3,
+      "request_bytes": 60352,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:04.461299+00:00",
+      "elapsed_seconds": 0.6153323329053819,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.03,
+        "sexual_content": 0.0,
+        "frightening_content": 0.06,
+        "dangerous_behavior": 0.08,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 1994,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1994
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 13,
+      "repeat": 3,
+      "frame_count": 5,
+      "request_bytes": 94632,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:05.077428+00:00",
+      "elapsed_seconds": 0.427560708951205,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.11,
+        "sexual_content": 0.0,
+        "frightening_content": 0.14,
+        "dangerous_behavior": 0.06,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 2298,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2298
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 14,
+      "repeat": 3,
+      "frame_count": 1,
+      "request_bytes": 18583,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:05.507385+00:00",
+      "elapsed_seconds": 0.5690482498612255,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.29,
+        "sexual_content": 0.0,
+        "frightening_content": 0.01,
+        "dangerous_behavior": 0.01,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 1690,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1690
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 15,
+      "repeat": 3,
+      "frame_count": 13,
+      "request_bytes": 234032,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:06.077385+00:00",
+      "elapsed_seconds": 0.720828624907881,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.96,
+        "sexual_content": 0.0,
+        "frightening_content": 0.44,
+        "dangerous_behavior": 0.13,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 3514,
+        "input_tokens_details": {
+          "cached_tokens": 2020,
+          "cache_write_tokens": 0,
+          "cache_write_tokens_details": {
+            "ttl_30m_tokens": 0,
+            "ttl_12h_tokens": 0
+          }
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 3514
+      },
+      "cached_tokens": 2020,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 16,
+      "repeat": 4,
+      "frame_count": 3,
+      "request_bytes": 60352,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:06.800342+00:00",
+      "elapsed_seconds": 0.5755405409727246,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.03,
+        "sexual_content": 0.0,
+        "frightening_content": 0.06,
+        "dangerous_behavior": 0.08,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 1994,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1994
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 17,
+      "repeat": 4,
+      "frame_count": 5,
+      "request_bytes": 94632,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:07.377292+00:00",
+      "elapsed_seconds": 0.3214131249114871,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.11,
+        "sexual_content": 0.0,
+        "frightening_content": 0.14,
+        "dangerous_behavior": 0.06,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 2298,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2298
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 18,
+      "repeat": 4,
+      "frame_count": 10,
+      "request_bytes": 183978,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:07.700372+00:00",
+      "elapsed_seconds": 0.5888140408787876,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.97,
+        "sexual_content": 0.0,
+        "frightening_content": 0.36,
+        "dangerous_behavior": 0.16,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 3058,
+        "input_tokens_details": {
+          "cached_tokens": 1564,
+          "cache_write_tokens": 0,
+          "cache_write_tokens_details": {
+            "ttl_30m_tokens": 0,
+            "ttl_12h_tokens": 0
+          }
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 3058
+      },
+      "cached_tokens": 1564,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 19,
+      "repeat": 4,
+      "frame_count": 13,
+      "request_bytes": 234032,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:08.293053+00:00",
+      "elapsed_seconds": 0.49864312494173646,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.96,
+        "sexual_content": 0.0,
+        "frightening_content": 0.44,
+        "dangerous_behavior": 0.13,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 3514,
+        "input_tokens_details": {
+          "cached_tokens": 2020,
+          "cache_write_tokens": 0,
+          "cache_write_tokens_details": {
+            "ttl_30m_tokens": 0,
+            "ttl_12h_tokens": 0
+          }
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 3514
+      },
+      "cached_tokens": 2020,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 20,
+      "repeat": 4,
+      "frame_count": 1,
+      "request_bytes": 18583,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:08.792773+00:00",
+      "elapsed_seconds": 0.8120991250034422,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.29,
+        "sexual_content": 0.0,
+        "frightening_content": 0.01,
+        "dangerous_behavior": 0.01,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 1690,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1690
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 21,
+      "repeat": 5,
+      "frame_count": 13,
+      "request_bytes": 234032,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:09.606129+00:00",
+      "elapsed_seconds": 1.033021958079189,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.96,
+        "sexual_content": 0.0,
+        "frightening_content": 0.44,
+        "dangerous_behavior": 0.13,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 3514,
+        "input_tokens_details": {
+          "cached_tokens": 2020,
+          "cache_write_tokens": 0,
+          "cache_write_tokens_details": {
+            "ttl_30m_tokens": 0,
+            "ttl_12h_tokens": 0
+          }
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 3514
+      },
+      "cached_tokens": 2020,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 22,
+      "repeat": 5,
+      "frame_count": 10,
+      "request_bytes": 183978,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:10.643810+00:00",
+      "elapsed_seconds": 0.7173042080830783,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.97,
+        "sexual_content": 0.0,
+        "frightening_content": 0.36,
+        "dangerous_behavior": 0.16,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 3058,
+        "input_tokens_details": {
+          "cached_tokens": 1564,
+          "cache_write_tokens": 0,
+          "cache_write_tokens_details": {
+            "ttl_30m_tokens": 0,
+            "ttl_12h_tokens": 0
+          }
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 3058
+      },
+      "cached_tokens": 1564,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 23,
+      "repeat": 5,
+      "frame_count": 5,
+      "request_bytes": 94632,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:11.362592+00:00",
+      "elapsed_seconds": 0.3502887920476496,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.11,
+        "sexual_content": 0.0,
+        "frightening_content": 0.14,
+        "dangerous_behavior": 0.06,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 2298,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2298
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 24,
+      "repeat": 5,
+      "frame_count": 1,
+      "request_bytes": 18583,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:11.714685+00:00",
+      "elapsed_seconds": 1.0639218750875443,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.29,
+        "sexual_content": 0.0,
+        "frightening_content": 0.01,
+        "dangerous_behavior": 0.01,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 1690,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1690
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    },
+    {
+      "order": 25,
+      "repeat": 5,
+      "frame_count": 3,
+      "request_bytes": 60352,
+      "valid": true,
+      "started_at": "2026-11-01T14:46:12.781021+00:00",
+      "elapsed_seconds": 0.9962132088840008,
+      "http_status": 200,
+      "probabilities": {
+        "violence": 0.03,
+        "sexual_content": 0.0,
+        "frightening_content": 0.06,
+        "dangerous_behavior": 0.08,
+        "substance_use": 0.0,
+        "hate_or_discrimination": 0.0,
+        "visible_profanity": 0.0,
+        "political_content": 0.0,
+        "religious_content": 0.0
+      },
+      "usage": {
+        "input_tokens": 1994,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 0,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 1994
+      },
+      "cached_tokens": 0,
+      "model": "gpt-6-luna"
+    }
+  ]
+}

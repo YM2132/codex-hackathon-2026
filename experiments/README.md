@@ -56,6 +56,20 @@ uv run python -m unittest discover -s tests -v
 
 API format: [OpenAI Decisions guide](https://developers.openai.com/api/docs/guides/decisions), [create endpoint](https://developers.openai.com/api/reference/resources/decisions/methods/create).
 
+## Latency benchmark
+
+```sh
+uv run python experiments/benchmark_latency.py \
+  --dataset artifacts/wiiFgsDJ8xk-76-102 \
+  --counts 1 3 5 10 13 --repeats 5
+```
+
+This makes 25 billable API calls using the existing prepared frames. It samples each requested count across the same clip, shuffles count order in each round, and reuses one HTTP client with no warmup or automatic retries. The timer measures the complete HTTP round-trip, including image upload, network time, and server processing. Downloading, frame extraction, payload encoding, and JSON response parsing are excluded. It does not measure server-only inference latency.
+
+The output directory contains raw successful HTTP responses, incremental `trials.json`, and `benchmark.json` with every call's timing, frame count, request bytes, token usage, cache usage, and category probabilities. Failed or incomplete calls are counted separately and excluded from successful latency statistics. Five samples per size give an exploratory median and range, not a reliable production p95. Repeated inputs may benefit from caching; compare observed cached and uncached calls separately. Frame content changes with the selected subset, so this is not a controlled estimate of per-frame inference cost.
+
+See [recorded benchmark results](LATENCY.md) for the measured run.
+
 ## Spliced test videos
 
 `splice_demo.py` creates two local MP4s using the first 15 seconds of `4s3c1KObSaI` as the base. Each inserts one of the existing clips at 7.5 seconds, then resumes the remaining 7.5 seconds of the base. The inserts retain their original audio; the outputs are H.264/AAC, 1280×720, 30 fps.

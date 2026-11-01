@@ -10,6 +10,8 @@ Use [this YouTube test video](https://youtu.be/XnWESGXnGwY) for the team's exten
 
 See [experiment setup and run instructions](experiments/README.md) for the frame-sampling and Decisions API pipeline on this branch.
 
+See the [latency benchmark](experiments/LATENCY.md) for measured response times across 1, 3, 5, 10, and 13 frames per Decisions request (five calls per size, with cache usage recorded).
+
 ## Dividing Responsibilities
 
 ### Product
