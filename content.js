@@ -31,7 +31,7 @@
     shadow = root.attachShadow({ mode: "open" });
     shadow.innerHTML = `
       <style>
-        :host { all: initial; }
+        :host { all: initial; position:absolute; inset:0; z-index:999999; display:block; pointer-events:auto; }
         .scrim { position:absolute; inset:0; z-index:999999; display:grid; place-items:center; padding:20px; box-sizing:border-box; background:rgba(14,25,38,.78); color:#172b35; font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
         .card { width:min(440px,100%); box-sizing:border-box; padding:24px; border-radius:22px; background:#fffdf8; box-shadow:0 18px 64px rgba(0,0,0,.28); }
         .mascot { display:block; width:84px; height:84px; margin:0 auto 12px; border-radius:22px; object-fit:cover; animation:sprout-float 3.2s ease-in-out infinite; }
