@@ -16,6 +16,10 @@ execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-f', 
 const calls = [];
 let delay = 100, fail = false;
 const relay = http.createServer(async (req, res) => {
+  if (req.url === '/health') {
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({service:'pawse', ok:true})); return;
+  }
   let raw = ''; for await (const chunk of req) raw += chunk;
   const scan = JSON.parse(raw); calls.push(scan);
   await new Promise(r => setTimeout(r, delay));
@@ -31,7 +35,7 @@ let browser, page;
 try {
   browser = await puppeteer.launch({
     executablePath: process.env.CHROME_PATH || undefined,
-    headless: !process.env.HEADFUL, pipe: true, enableExtensions: [root],
+    headless: !process.env.HEADFUL, pipe: true, enableExtensions: [process.env.PAWSE_EXTENSION_DIR || root],
     args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio'],
     defaultViewport: {width: 1200, height: 800}
   });
@@ -98,6 +102,7 @@ try {
   const extensionId = new URL(target.url()).host;
   const popup = await browser.newPage();
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.waitForFunction(() => document.querySelector('#backendStatus')?.textContent === 'Backend connected');
   // Approval needs the parent PIN (test-only PIN set here); a wrong PIN must not release playback.
   const approvals = await popup.evaluate(async () => {
     const [tab] = await chrome.tabs.query({url:'https://www.youtube.com/*'});

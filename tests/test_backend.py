@@ -18,6 +18,12 @@ def payload():
 
 
 class BackendTests(unittest.TestCase):
+    def test_health_identifies_backend_without_exposing_key(self):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-secret-not-for-output"}), TestClient(app) as client:
+            response = client.get("/health")
+            self.assertEqual(response.json(), {"service": "pawse", "ok": True, "model": "gpt-6-luna"})
+            self.assertNotIn("test-secret", response.text)
+
     def test_other_youtube_video_ids_are_accepted(self):
         for video_id in ["aqz-KE-bpKQ", "wiiFgsDJ8xk"]:
             self.assertEqual(Scan(**{**payload(), "videoId": video_id}).videoId, video_id)

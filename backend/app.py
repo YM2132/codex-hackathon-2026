@@ -118,7 +118,7 @@ async def local_extension_only(request, call_next):
 
 @app.get("/health")
 async def health():
-    return {"ok": bool(os.environ.get("OPENAI_API_KEY")), "model": "gpt-6-luna"}
+    return {"service": "pawse", "ok": bool(os.environ.get("OPENAI_API_KEY")), "model": "gpt-6-luna"}
 
 
 @app.post("/classify")

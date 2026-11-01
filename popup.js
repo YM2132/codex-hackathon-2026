@@ -7,6 +7,21 @@ let renderedRulesKey = null;
 let parentControlsUnlocked = false;
 let renderedVideo = null; // video key as resolved in render() (embedded players report their own)
 
+async function checkBackend() {
+  $("checkBackend").disabled = true;
+  $("backendStatus").textContent = "Checking backend connection…";
+  try {
+    const health = extensionMode ? await chrome.runtime.sendMessage({type: "get_backend_health"}) : null;
+    $("backendStatus").textContent = !extensionMode ? "UI preview · no live connection"
+      : !health?.ok ? "Backend unavailable. Start Pawse and keep its terminal open."
+      : !health.keyConfigured ? "Backend connected. Add your API key to the backend’s .env and restart it."
+      : "Backend connected";
+  } catch { $("backendStatus").textContent = "Connection unavailable. Reload Pawse and start the backend."; }
+  finally { $("checkBackend").disabled = false; }
+}
+$("checkBackend").addEventListener("click", checkBackend);
+checkBackend();
+
 async function getSettings() {
   if (extensionMode) return { ...DEFAULTS, ...(await chrome.runtime.sendMessage({ type: "get_settings" })) };
   try {

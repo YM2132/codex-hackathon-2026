@@ -1,0 +1,5 @@
+# Judge backend only; versions match the tested uv.lock baseline.
+fastapi==0.162.0
+httpx==0.28.1
+python-dotenv==1.2.4
+uvicorn==0.54.0

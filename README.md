@@ -5,26 +5,20 @@ Pawse is a Chrome extension that checks the next few seconds of a video **before
 **Supported:** YouTube, YouTube Kids, TikTok, Instagram, X, Reddit, Snapchat, Dailymotion.
 **Not supported** (videos aren't checked): Facebook, Twitch, Vimeo, Netflix and other DRM services.
 
-## Install
+## Install for judging
 
-You need Google Chrome, [uv](https://docs.astral.sh/uv/getting-started/installation/) (`brew install uv` on macOS) and an OpenAI API key with Decisions access.
+Download and extract **`pawse-hackathon.zip`** from the team’s release. You need Chrome, Python 3.11+, and an OpenAI API key with Decisions access. Git, uv, Node, npm, and ffmpeg are not needed for the packaged app.
 
-```sh
-git clone https://github.com/YM2132/codex-hackathon-2026.git
-cd codex-hackathon-2026
-./start.sh
-```
+1. Start **Start Pawse.command** on macOS or **Start Pawse.bat** on Windows (Linux: `bash start.sh`). The first launch installs backend packages and asks for your key with hidden input. Keep the terminal open.
+2. Open `chrome://extensions`, enable **Developer mode**, select **Load unpacked**, and choose the extracted **Pawse/extension** folder.
+3. Open Pawse, choose an age profile, set a parent PIN, and enable protection. Confirm **Backend connected** and select **Ready / No sample state** for live checks.
+4. Refresh the tab and try [the shared demo video](https://www.youtube.com/watch?v=XnWESGXnGwY).
 
-`start.sh` asks for your API key once and saves it to `.env`, which is git-ignored and never put in the extension. It then installs dependencies and starts the local backend. Keep the terminal open while using Pawse.
+**[Full install guide and troubleshooting → INSTALL.md](INSTALL.md)**
 
-Then, in Chrome:
+Until a release is published, use GitHub’s **Code → Download ZIP**, extract it, run the same launcher, and load the repository folder containing the root `manifest.json` into Chrome. Contributors can still clone the repo and use `uv sync` / `uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000`.
 
-1. Open `chrome://extensions` and turn on **Developer mode**.
-2. Click **Load unpacked** and select the `codex-hackathon-2026` folder.
-3. Pin Pawse, open it, choose your child's age and set a parent PIN.
-4. Reload any video tab that was already open, then play a video.
-
-On Windows, or to run the backend by hand: put `OPENAI_API_KEY=...` in `.env` (see `.env.example`), then run `uv sync` and `uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000`.
+The key stays in your backend’s local `.env`, never in the extension. There is no bundled/shared API key or hosted service. Preview states work without a backend but are labeled UI demonstrations, not content analysis.
 
 ## Using Pawse
 
@@ -69,3 +63,7 @@ node lookahead/harness/stub-relay.mjs       # keyless stub backend for manual te
 ```
 
 Contributors and agents: read [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for contracts, branch history and known gaps. Capture research and per-site results are in [lookahead/README.md](lookahead/README.md), and model experiments in [experiments/README.md](experiments/README.md).
+
+## Package and release
+
+Run `python3 scripts/build_package.py` to create the full judge kit, extension-only ZIP, and checksums in `dist/`. The allowlist excludes keys, media, development environments and the alternate preview extension. The **Judge package** workflow validates packages on macOS, Windows and Linux; PR/main builds provide artifacts. After merging, publish a GitHub Release from the desired tag to attach the ZIPs automatically. See [INSTALL.md](INSTALL.md) for the release handoff.
