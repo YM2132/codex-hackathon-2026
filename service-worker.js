@@ -96,6 +96,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await chrome.storage.local.set({ parentPin: { salt: Array.from(salt), hash } });
       sendResponse({ ok: true }); return;
     }
+    if (message?.type === "verify_parent_pin") {
+      if (sender.tab || !(await verifyPin(String(message.pin || "")))) {
+        sendResponse({ ok: false }); return;
+      }
+      sendResponse({ ok: true }); return;
+    }
+    if (message?.type === "verify_parent_pin") {
+      if (sender.tab || !(await verifyPin(String(message.pin || "")))) {
+        sendResponse({ ok: false }); return;
+      }
+      sendResponse({ ok: true }); return;
+    }
     if (message?.type === "save_settings") {
       const prefs = { ...DEFAULT_SETTINGS, ...(message.settings || {}) };
       await chrome.storage.sync.set(prefs);

@@ -3,6 +3,7 @@ const AGE_LABELS = { "3-5": "Ages 3–5", "6-8": "Ages 6–8", "9-12": "Ages 9�
 const $ = (id) => document.getElementById(id);
 const extensionMode = typeof chrome !== "undefined" && !!chrome.runtime?.sendMessage;
 let renderedRulesKey = null;
+let parentControlsUnlocked = false;
 
 async function getSettings() {
   if (extensionMode) return { ...DEFAULTS, ...(await chrome.runtime.sendMessage({ type: "get_settings" })) };
@@ -119,6 +120,9 @@ async function render() {
   $("setupView").hidden = settings.setupComplete;
   $("dashboardView").hidden = !settings.setupComplete;
   if (!settings.setupComplete) return;
+  $("parentUnlockForm").hidden = parentControlsUnlocked;
+  $("parentUnlockButton").textContent = settings.pinConfigured ? "Unlock controls" : "Set PIN and unlock";
+  document.querySelectorAll(".parent-control").forEach((section) => { section.hidden = !parentControlsUnlocked; });
 
   $("profileTitle").textContent = AGE_LABELS[settings.ageBand] || AGE_LABELS["3-5"];
   $("ageSelect").value = settings.ageBand;
@@ -156,6 +160,19 @@ $("startButton").addEventListener("click", async () => {
     const video = await activeVideo();
     if (video.tabId != null) chrome.tabs.sendMessage(video.tabId, { type: "refresh_protection" }).catch(() => {});
   }
+  render();
+});
+
+$("parentUnlockForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const { pinConfigured } = await getSettings();
+  const pin = $("parentUnlockPin").value;
+  const result = pinConfigured
+    ? await chrome.runtime.sendMessage({ type: "verify_parent_pin", pin })
+    : await chrome.runtime.sendMessage({ type: "set_parent_pin", pin });
+  if (!result?.ok) { toast("That PIN didn’t work. Try again."); $("parentUnlockPin").select(); return; }
+  parentControlsUnlocked = true;
+  $("parentUnlockPin").value = "";
   render();
 });
 
