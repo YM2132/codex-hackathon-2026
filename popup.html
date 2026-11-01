@@ -52,10 +52,24 @@
         <p id="adultRequestLabel" class="adult-request" hidden>Your child asked for help with this video.</p>
         <span id="previewLabel" class="preview-label" hidden>Preview example · no model result</span>
         <button id="allowOnceButton" class="button button-primary button-wide" hidden>Allow this video once</button>
+        <form id="approvalForm" class="approval-form" hidden>
+          <label class="field-label" for="approvalPin">Parent PIN</label>
+          <input id="approvalPin" class="select-control" inputmode="numeric" autocomplete="current-password" type="password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required>
+          <button class="button button-primary button-wide" type="submit">Approve this video</button>
+        </form>
         <button id="backButton" class="text-button" hidden>Back to videos</button>
       </section>
 
-      <section class="profile-card">
+      <section class="parent-access" aria-labelledby="parentAccessTitle">
+        <h2 id="parentAccessTitle">Grown-up controls</h2>
+        <form id="parentUnlockForm">
+          <label class="field-label" for="parentUnlockPin">Enter your PIN to manage Pawse</label>
+          <input id="parentUnlockPin" class="select-control" inputmode="numeric" autocomplete="current-password" type="password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required>
+          <button id="parentUnlockButton" class="button button-primary button-wide" type="submit">Unlock controls</button>
+        </form>
+      </section>
+
+      <section class="profile-card parent-control" hidden>
         <div class="profile-copy">
           <span class="profile-icon" aria-hidden="true">◉</span>
           <div><strong>Age profile</strong></div>
@@ -68,7 +82,7 @@
         </select>
       </section>
 
-      <section class="rules-card" aria-labelledby="rulesTitle">
+      <section class="rules-card parent-control" aria-labelledby="rulesTitle" hidden>
         <div class="rules-heading">
           <div>
             <p class="eyebrow">Parent controls</p>
@@ -88,7 +102,19 @@
         <p class="rules-note"><span aria-hidden="true">ⓘ</span> Rules are checked against upcoming visual samples. Sound and spoken words are not assessed.</p>
       </section>
 
-      <details class="preview-tools">
+      <details class="pin-settings parent-control" id="pinSettings" hidden>
+        <summary>Parent PIN</summary>
+        <form id="pinForm">
+          <label class="field-label" for="currentPin">Current PIN (to change it)</label>
+          <input id="currentPin" class="select-control" inputmode="numeric" autocomplete="current-password" type="password" pattern="[0-9]{4,8}" minlength="4" maxlength="8">
+          <label class="field-label" for="newPin">Choose a 4–8 digit PIN</label>
+          <input id="newPin" class="select-control" inputmode="numeric" autocomplete="new-password" type="password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required>
+          <button class="button button-primary button-wide" type="submit">Save PIN</button>
+        </form>
+        <p id="pinStatus" class="pin-status"></p>
+      </details>
+
+      <details class="preview-tools parent-control" open hidden>
         <summary>Try Pawse’s states</summary>
         <p>Ready uses live checks. Other buttons show demo states.</p>
         <div class="state-buttons" role="group" aria-label="Preview Pawse states">

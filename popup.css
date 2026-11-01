@@ -57,6 +57,12 @@ h2 { margin-bottom:5px; font-size:18px; font-weight:700; letter-spacing:-.02em; 
 .check-details { margin-top:10px; }
 .check-details summary { color:#536b62; cursor:pointer; font-size:10px; font-weight:700; }
 .check-details p { margin:7px 0 0; color:var(--muted); font-size:10px; line-height:1.4; }
+.approval-form { margin-top:12px; }
+.approval-form input,.pin-settings input { width:100%; margin-bottom:8px; }
+.pin-settings { margin-top:12px; padding:11px 12px; border-radius:13px; background:#f2f4ee; }
+.pin-settings summary { color:#536b62; cursor:pointer; font-size:10px; font-weight:750; }
+.pin-settings form { margin-top:12px; }
+.pin-status { margin:7px 0 0; color:var(--muted); font-size:10px; }
 .adult-request { margin:10px 0 0; padding:9px 10px; border-radius:11px; background:#fff3d8; color:#765619; font-size:11px; font-weight:700; line-height:1.4; }
 .preview-label { display:inline-block; margin-top:11px; padding:5px 8px; border-radius:99px; background:var(--amber-bg); color:#765619; font-size:9px; font-weight:750; }
 .video-card .button { margin-top:15px; }

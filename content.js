@@ -12,7 +12,7 @@
   let buddyPanelOpen = false;
   let refreshGeneration = 0;
   const engine = new SproutEngine(render);
-  const pauseStatuses = new Set(["connecting", "review", "blocked"]);
+  const pauseStatuses = new Set(["checking", "connecting", "review", "blocked"]);
   const buddySprites = {
     idle: "assets/pawse-idle-cutout.png",
     thinking: "assets/pawse-thinking-cutout.png",
@@ -48,12 +48,17 @@
         :host { all:initial; position:fixed; right:20px; bottom:20px; z-index:2147483000; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
         :host([hidden]) { display:none !important; }
         * { box-sizing:border-box; }
-        .pet { display:grid; width:128px; height:128px; place-items:center; overflow:visible; padding:0; border:0; border-radius:0; background:transparent; filter:drop-shadow(0 3px 3px #51361e22); cursor:pointer; animation:buddy-bob 3.2s ease-in-out infinite; }
+        .pet { display:grid; width:128px; height:128px; place-items:center; overflow:visible; padding:0; border:0; border-radius:0; background:transparent; filter:drop-shadow(0 3px 3px #51361e22); cursor:pointer; animation:buddy-wander 7s ease-in-out infinite; }
         .pet img { width:128px; height:128px; object-fit:contain; transition:transform .2s ease; }
+        .pet .sprite-loop { display:block; width:128px; height:128px; background-image:url("${chrome.runtime.getURL("assets/pawse-animation-sheet.png")}"); background-size:200% 200%; animation:pet-frames 2.4s steps(1,end) infinite; }
+        @keyframes pet-frames { 0%,24% { background-position:0 0; } 25%,49% { background-position:100% 0; } 50%,74% { background-position:0 100%; } 75%,100% { background-position:100% 100%; } }
         .pet:hover img { transform:scale(1.025); }
         .pet:focus-visible,.close:focus-visible,.action:focus-visible { outline:3px solid #70c7a4; outline-offset:3px; }
-        @keyframes buddy-bob { 0%,100% { transform:translateY(1px); } 50% { transform:translateY(-4px); } }
-        @media (prefers-reduced-motion: reduce) { .pet,.pet img { animation:none !important; transition:none; } }
+        @keyframes buddy-wander { 0%,100% { transform:translate(0,0) rotate(0); } 25% { transform:translate(-5px,-7px) rotate(-2deg); } 55% { transform:translate(-2px,1px) rotate(1deg); } 78% { transform:translate(4px,-4px) rotate(2deg); } }
+        .pet[data-mood="pause"] { animation:none; }
+        .pet[data-mood="thinking"] { animation:buddy-think 2.8s ease-in-out infinite; }
+        @keyframes buddy-think { 0%,100% { transform:translateY(0) rotate(0); } 50% { transform:translateY(-4px) rotate(-2deg); } }
+        @media (prefers-reduced-motion: reduce) { .pet,.pet img,.pet .sprite-loop { animation:none !important; transition:none; background-position:0 0 !important; } }
         .panel { position:absolute; right:8px; bottom:126px; width:min(276px,calc(100vw - 28px)); padding:16px; border:1px solid #e8e3d9; border-radius:16px; background:#fffdf8; color:#183a3c; box-shadow:0 12px 36px #102a2b28; }
         .panel[hidden] { display:none !important; }
         .panel-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
@@ -66,7 +71,7 @@
         .action.secondary { background:#edf3ef; color:#254840; }
         .close { position:absolute; top:8px; right:9px; width:27px; height:27px; border:0; border-radius:50%; background:transparent; color:#637175; font:20px system-ui,sans-serif; cursor:pointer; }
       </style>
-      <button class="pet" id="buddyToggle" data-mood="idle" aria-label="Open Pawse helper" aria-expanded="false"><img alt=""></button>
+      <button class="pet" id="buddyToggle" data-mood="idle" aria-label="Open Pawse helper" aria-expanded="false"><span class="sprite-loop" aria-hidden="true"></span><img alt="" hidden></button>
       <section class="panel" id="buddyPanel" role="dialog" aria-label="Pawse helper" aria-live="polite" hidden>
         <button class="close" id="buddyClose" aria-label="Close Pawse helper">×</button>
         <div class="panel-head"><img class="mini-pet" alt=""><h2 class="panel-title" id="buddyTitle"></h2></div>
@@ -107,7 +112,13 @@
     pet.dataset.mood = mood;
     pet.setAttribute("aria-label", `Pawse: ${label}. Open helper.`);
     const spriteUrl = chrome.runtime.getURL(buddySprites[mood] || buddySprites.idle);
-    buddyShadow.querySelectorAll(".pet img, .mini-pet").forEach((image) => { image.src = spriteUrl; });
+    const petLoop = buddyShadow.querySelector(".pet .sprite-loop");
+    const petImage = buddyShadow.querySelector(".pet img");
+    const animateFrames = mood === "idle" || mood === "greeting";
+    petLoop.hidden = !animateFrames;
+    petImage.hidden = animateFrames;
+    petImage.src = spriteUrl;
+    buddyShadow.querySelector(".mini-pet").src = spriteUrl;
   }
 
   function updateBuddyMood() {
@@ -129,9 +140,9 @@
     const copy = status === "safe"
       ? { title: "All clear!", detail: decision.preview ? "Just a demo." : "The next few seconds are checked." }
       : status === "connecting"
-        ? { title: "Pawse needs a grown-up", detail: "Let’s ask them to help us check." }
+        ? { title: "Pawse time!", detail: "Let’s ask a grown-up to check." }
       : status === "review" || status === "blocked"
-        ? { title: "Pawse found a bump", detail: "Please ask a grown-up to help." }
+        ? { title: "Pawse time!", detail: "Please ask a grown-up to help." }
       : status === "no_video"
         ? { title: "Hi, I’m Pawse.", detail: "Open a video to check it." }
         : { title: "Hi, I’m Pawse.", detail: "Here to help." };
@@ -167,8 +178,13 @@
         .scrim { position:absolute; inset:0; z-index:999999; display:grid; place-items:center; padding:20px; box-sizing:border-box; background:rgba(14,25,38,.78); color:#172b35; font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
         .card { width:min(440px,100%); box-sizing:border-box; padding:24px; border-radius:22px; background:#fffdf8; box-shadow:0 18px 64px rgba(0,0,0,.28); }
         .mascot { display:block; width:112px; height:112px; margin:0 auto 14px; object-fit:contain; animation:pawse-float 3.2s ease-in-out infinite; }
+        .pet-play { display:block; width:132px; height:132px; margin:0 auto 10px; padding:0; border:0; background:transparent; cursor:pointer; }
+        .pet-play .sprite-loop { display:block; width:112px; height:112px; margin:auto; background-image:url("${chrome.runtime.getURL("assets/pawse-animation-sheet.png")}"); background-size:200% 200%; animation:pet-frames 2.4s steps(1,end) infinite; }
+        .pet-play:focus-visible { outline:3px solid #70c7a4; outline-offset:2px; border-radius:18px; }
+        .pet-play.playing .sprite-loop { animation:pet-frames 1.1s steps(1,end) infinite; }
+        .play-feedback { min-height:18px; margin:-4px 0 4px; color:#526965; text-align:center; font-size:12px; }
         @keyframes pawse-float { 0%,100% { transform:translateY(2px); } 50% { transform:translateY(-3px); } }
-        @media (prefers-reduced-motion: reduce) { .mascot { animation:none; } }
+        @media (prefers-reduced-motion: reduce) { .mascot,.pet-play .sprite-loop { animation:none; background-position:0 0; } }
         h2 { margin:0 0 8px; color:#17333b; font-size:23px; line-height:1.18; letter-spacing:-.03em; }
         p { margin:0; color:#5d6c70; font-size:14px; }
         .preview { display:inline-flex; margin-top:15px; padding:5px 9px; border-radius:99px; background:#fff3d8; color:#725112; font-size:11px; font-weight:700; }
@@ -224,17 +240,14 @@
     const states = {
       connecting: {
         title: "Pawse is checking ahead",
-        detail: "One moment while Pawse checks the next few seconds.",
-        note: "Your grown-up can check Pawse in the toolbar.",
-        icon: "?",
-        noteClass: "offline-note"
+        detail: "One moment while Pawse checks the next few seconds."
       },
       review: {
-        title: "Pawse found a bump",
-        detail: "Please ask a grown-up to help."
+        title: "Pawse time!",
+        detail: "Let’s ask a grown-up to check this video."
       },
       blocked: {
-        title: "Let’s find another video",
+        title: "Let’s pause and pick another",
         detail: "Pawse is looking out for you."
       }
     };
@@ -243,7 +256,8 @@
     surface.innerHTML = `
       <section class="scrim" role="dialog" aria-modal="true" aria-labelledby="pawse-title" aria-describedby="pawse-detail">
         <div class="card">
-          <img class="mascot" src="${chrome.runtime.getURL((status === "connecting" ? buddySprites.thinking : buddySprites.pause))}" alt="" aria-hidden="true">
+          <button class="pet-play" type="button" aria-label="Play with Pawse"><span class="sprite-loop" aria-hidden="true"></span></button>
+          <p class="play-feedback" aria-live="polite">Tap Pawse to say hello</p>
           <h2 id="pawse-title">${state.title}</h2>
           <p id="pawse-detail">${state.detail}</p>
           ${previewTag}
@@ -255,6 +269,17 @@
       </section>`;
     if (decision.detail) surface.querySelector("#pawse-detail").textContent = decision.detail;
     surface.querySelector('[data-action="back"]')?.addEventListener("click", goBack);
+    const petPlay = surface.querySelector(".pet-play");
+    let playTaps = 0;
+    petPlay?.addEventListener("click", () => {
+      playTaps += 1;
+      petPlay.classList.remove("playing");
+      void petPlay.offsetWidth;
+      petPlay.classList.add("playing");
+      const feedback = surface.querySelector(".play-feedback");
+      feedback.textContent = playTaps >= 3 ? "Pawse says: thanks for keeping me company!" : "Boop! Pawse is happy you’re here.";
+      if (playTaps >= 3) playTaps = 0;
+    });
     surface.querySelector('[data-action="wait"]')?.addEventListener("click", (event) => {
       const button = event.currentTarget;
       requestAdultHelp(null);

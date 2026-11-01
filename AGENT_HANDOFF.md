@@ -28,7 +28,8 @@ Load the **repository root** through Chrome → `chrome://extensions` → Develo
 | `feat/youtube-protection-extension` | Raja’s Pawse dog UI, sprites and preview states through `143298f` |
 | `feat/unified-sprout-extension` | Working integration; `5dab10e` wires the pipeline, `17408c2` merges Pawse and removes the temporary demo restriction |
 | `lookahead-preview` (later commits) | Multi-site capture: video↔MediaSource mapping, shadow-DOM players, DRM/worker detection, plain-file decoder, site allowlist, cross-site harness |
-| `feat/multisite-pawse` | This branch: merges the above into Pawse and adds `sites.js` adapters for all supported sites |
+| `feat/youtube-protection-extension` (`785853d`–`9729853`) | Explicit “Pawse time” pause copy, animated Pawse sprite with tap-to-play, parent PIN for controls and approvals |
+| `feat/multisite-pawse` | This branch: merges all of the above into Pawse and adds `sites.js` adapters for all supported sites |
 
 Start further integration from this branch. If your working branch has additional changes, commit them first and merge `origin/feat/unified-sprout-extension`; resolve conflicts deliberately. Do not replace the integrated files wholesale with earlier UI or capture versions. Do not cherry-pick a merge commit without understanding which parent you need. Keep the existing branch history and teammate changes.
 
@@ -81,7 +82,9 @@ Isolated world posts `{tag: "lookahead-req", id, op, args}` to the page. Support
 | `get_settings`, `save_settings` | Settings fields: `setupComplete`, `protectionOn`, `ageBand`, `previewScenario`, `customRules` |
 | `refresh_protection` | Worker → content script; invalidate and recheck after settings change |
 | `request_adult_review`, `get_adult_request`, `clear_adult_request` | Video-specific help request and toolbar badge |
-| `allow_once` | `{videoId, tabId}`; explicit parent override for that video for the browser session |
+| `allow_once` | `{videoId, tabId, pin}`; parent override for that video for the browser session. Requires the correct parent PIN and must come from a Pawse extension page (popup), never a content script |
+| `set_parent_pin` | `{pin, currentPin?}` (4–8 digits); extension pages only; changing an existing PIN needs `currentPin`. Stored as PBKDF2-SHA-256 hash + salt in `chrome.storage.local` |
+| `verify_parent_pin` | `{pin}`; extension pages only; unlocks the popup's parent controls for that popup session |
 | `back_to_results` | `{tabId}`; asks the content script to navigate back |
 
 `allow_once` for a feed page key (`<site>:page-…`) is not stored in `allowedVideoIds`; the content script allows only the video playing at the time and resumes checks when the source changes. `get_decision` from the popup returns the tab’s latest decision even if its key differs from the URL-derived one (Dailymotion’s embedded player).
@@ -154,7 +157,7 @@ Harness output is under ignored `artifacts/unified-browser-test/` and `artifacts
 - Visual samples can miss brief events; there is no audio/transcript classification, recommendation filtering, persistent verdict cache, or video-wide safety guarantee.
 - Ads, worker-based MediaSource, DRM, live streams and unavailable buffers can leave playback held. Long videos and codec/quality changes need more testing. The decoder currently replays captured chunks per window, which can get expensive.
 - The MAIN-world message bridge trusts the page environment. It is not hardened against a hostile page forging frame responses. The playback guard is best effort, not a security boundary; background throttling and high playback speeds need additional validation.
-- Parent controls have no PIN; children can disable an unmanaged extension. “Allow once” deliberately bypasses checks for the video’s browser session.
+- Parent controls and approvals need a 4–8 digit PIN (from `feat/youtube-protection-extension`), but children can still disable or remove an unmanaged extension in `chrome://extensions`. “Allow once” deliberately bypasses checks for the video’s browser session.
 - The unauthenticated relay is for loopback development only. Its Origin checks are not authentication. Hosted deployment requires authentication and a deliberate extension/backend configuration change. Keep API keys server-side and out of commits, logs, screenshots and handoffs.
 
 For new UI changes, preserve the live-versus-preview distinction and report window-level results without claiming an entire video is safe. For model changes, preserve strict parsing and the parent policy. For capture changes, run the codec-switch/seek tests and a live YouTube check. After updating installed code, reload the extension **and** the YouTube tab; restart the backend after Python changes.

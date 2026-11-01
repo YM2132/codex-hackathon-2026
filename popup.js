@@ -4,6 +4,8 @@ const AGE_LABELS = { "3-5": "Ages 3–5", "6-8": "Ages 6–8", "9-12": "Ages 9�
 const $ = (id) => document.getElementById(id);
 const extensionMode = typeof chrome !== "undefined" && !!chrome.runtime?.sendMessage;
 let renderedRulesKey = null;
+let parentControlsUnlocked = false;
+let renderedVideo = null; // video key as resolved in render() (embedded players report their own)
 
 async function getSettings() {
   if (extensionMode) return { ...DEFAULTS, ...(await chrome.runtime.sendMessage({ type: "get_settings" })) };
@@ -55,10 +57,10 @@ function describeDecision(decision, settings, video) {
   if (!video.id) return { title: "Choose a video", text: `Open a ${video.siteName} video to check it.`, icon: "•", kind: "" };
   if (!settings.protectionOn) return { title: "Protection is off", text: "Turn it on to check videos.", icon: "○", kind: "" };
   if (decision.status === "safe") return { title: "Pawse says: all clear!", text: decision.preview ? "Just a demo · not a real check." : "Upcoming visual samples checked.", icon: "✓", kind: "good" };
-  if (decision.status === "review") return { title: "Pawse found a bump", text: decision.detail || "Please ask a grown-up to help.", icon: "!", kind: "review" };
-  if (decision.status === "blocked") return { title: "Pawse found a bump", text: decision.detail || "Let’s pick another video together.", icon: "Ⅱ", kind: "blocked" };
+  if (decision.status === "review") return { title: "Pawse time!", text: decision.detail || "Please ask a grown-up to check this video.", icon: "Ⅱ", kind: "review" };
+  if (decision.status === "blocked") return { title: "Let’s pause and pick another", text: decision.detail || "Pawse is looking out for you.", icon: "Ⅱ", kind: "blocked" };
   if (decision.status === "checking") return { title: "Checking…", text: "Wait for Pawse to finish.", icon: "…", kind: "review" };
-  if (decision.status === "connecting") return { title: "Pawse needs a grown-up", text: decision.detail || "Waiting for the next visual check.", icon: "?", kind: "review" };
+  if (decision.status === "connecting") return { title: "Pawse time!", text: decision.detail || "Let’s ask a grown-up to check this video.", icon: "Ⅱ", kind: "review" };
   if (decision.status === "allowed_once") return { title: "Allowed once", text: "For this session only.", icon: "✓", kind: "good" };
   return { title: "Not connected", text: "Moderation service unavailable.", icon: "…", kind: "" };
 }
@@ -113,12 +115,16 @@ async function render() {
   const decision = await getDecision(video);
   // An embedded player (e.g. Dailymotion) reports its own key; act on what is actually playing.
   if (extensionMode && decision?.videoId && SproutSites.isValidKey(decision.videoId)) video.id = decision.videoId;
+  renderedVideo = video;
   const adultRequest = extensionMode && video.id
     ? await chrome.runtime.sendMessage({ type: "get_adult_request", videoId: video.id }).catch(() => ({ requested: false }))
     : { requested: false };
   $("setupView").hidden = settings.setupComplete;
   $("dashboardView").hidden = !settings.setupComplete;
   if (!settings.setupComplete) return;
+  $("parentUnlockForm").hidden = parentControlsUnlocked;
+  $("parentUnlockButton").textContent = settings.pinConfigured ? "Unlock controls" : "Set PIN and unlock";
+  document.querySelectorAll(".parent-control").forEach((section) => { section.hidden = !parentControlsUnlocked; });
 
   $("profileTitle").textContent = AGE_LABELS[settings.ageBand] || AGE_LABELS["3-5"];
   $("ageSelect").value = settings.ageBand;
@@ -145,7 +151,9 @@ async function render() {
   $("adultRequestLabel").hidden = !adultRequest.requested;
   $("adultRequestLabel").textContent = adultRequest.requested ? "🐾 Pawse let your grown-up know." : "";
   $("allowOnceButton").hidden = !["review", "blocked", "connecting"].includes(decision.status) || !video.id;
+  $("allowOnceButton").textContent = decision.status === "connecting" ? "Ask a grown-up" : "Ask a grown-up to approve";
   $("backButton").hidden = !["review", "blocked", "connecting"].includes(decision.status) || !video.id;
+  $("pinStatus").textContent = settings.pinConfigured ? "PIN set" : "Set a PIN to approve videos.";
 }
 
 $("startButton").addEventListener("click", async () => {
@@ -154,6 +162,19 @@ $("startButton").addEventListener("click", async () => {
     const video = await activeVideo();
     if (video.tabId != null) chrome.tabs.sendMessage(video.tabId, { type: "refresh_protection" }).catch(() => {});
   }
+  render();
+});
+
+$("parentUnlockForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const { pinConfigured } = await getSettings();
+  const pin = $("parentUnlockPin").value;
+  const result = pinConfigured
+    ? await chrome.runtime.sendMessage({ type: "verify_parent_pin", pin })
+    : await chrome.runtime.sendMessage({ type: "set_parent_pin", pin });
+  if (!result?.ok) { toast("That PIN didn’t work. Try again."); $("parentUnlockPin").select(); return; }
+  parentControlsUnlocked = true;
+  $("parentUnlockPin").value = "";
   render();
 });
 
@@ -211,13 +232,28 @@ async function refreshTab() {
 }
 
 $("allowOnceButton").addEventListener("click", async () => {
-  const video = await activeVideo();
-  if (extensionMode && video.id && video.tabId != null) {
-    await chrome.runtime.sendMessage({ type: "allow_once", videoId: video.id, tabId: video.tabId });
-  } else if (!extensionMode) {
-    sessionStorage.setItem("pawse-allowed-once", video.id);
-  }
-  toast("Allowed once. This choice ends with the current session.");
+  $("approvalForm").hidden = false;
+  $("approvalPin").focus();
+});
+
+$("approvalForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const video = renderedVideo || await activeVideo();
+  const result = await chrome.runtime.sendMessage({ type: "allow_once", videoId: video.id, tabId: video.tabId, pin: $("approvalPin").value });
+  if (!result?.ok) { toast("That PIN didn’t work. Try again."); $("approvalPin").select(); return; }
+  $("approvalPin").value = "";
+  $("approvalForm").hidden = true;
+  toast("Approved for this session.");
+  render();
+});
+
+$("pinForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const result = await chrome.runtime.sendMessage({ type: "set_parent_pin", pin: $("newPin").value, currentPin: $("currentPin").value });
+  if (!result?.ok) { toast(result?.error === "current_pin" ? "Enter the current PIN to change it." : "Use 4–8 digits for the PIN."); return; }
+  $("currentPin").value = "";
+  $("newPin").value = "";
+  toast("Parent PIN saved.");
   render();
 });
 

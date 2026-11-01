@@ -45,7 +45,7 @@ Missing frames, missing/refused answers, an unavailable backend, or an unsupport
 
 ## Current limits
 
-This is a hackathon prototype: visual sampling can miss brief events, audio is not analyzed, and model results can be wrong. The browser guard is best effort and is not a managed-device security boundary. The popup is not PIN protected. Ads are held for adult review. Worker-based MediaSource, DRM, live streams, and player paths without captured buffers are unsupported and remain held. YouTube Shorts and recommendation filtering are not validated. On feed pages, “allow once” covers only the video playing at the time.
+This is a hackathon prototype: visual sampling can miss brief events, audio is not analyzed, and model results can be wrong. The browser guard is best effort and is not a managed-device security boundary. Parent controls and approvals need a 4–8 digit PIN, but an unmanaged extension can still be disabled in chrome://extensions. Ads are held for adult review. Worker-based MediaSource, DRM, live streams, and player paths without captured buffers are unsupported and remain held. YouTube Shorts and recommendation filtering are not validated. On feed pages, “allow once” covers only the video playing at the time.
 
 The MAIN-world capture bridge trusts the page's media environment; it is not hardened against a malicious page forging bridge messages. The backend binds only to loopback. Do not expose this unauthenticated development relay publicly.
 

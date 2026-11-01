@@ -66,7 +66,7 @@ try {
     return request.continue();
   });
   await page.goto('https://www.youtube.com/watch?v=aqz-KE-bpKQ');
-  await page.waitForFunction(() => document.querySelector('#pawse-protection-root')?.shadowRoot?.textContent.includes('find another video'), {timeout: 30000});
+  await page.waitForFunction(() => document.querySelector('#pawse-protection-root')?.shadowRoot?.textContent.includes('pause and pick another'), {timeout: 30000});
   const held = await page.evaluate(() => ({time: document.querySelector('video').currentTime, paused: document.querySelector('video').paused}));
   assert(held.paused && held.time < 6 && held.time > 4, JSON.stringify(held));
   assert(calls.some(c => c.start === 6 && c.frames.length === 3));
@@ -79,7 +79,7 @@ try {
   await page.$eval('video', v => { v.currentTime = 18; v.play().catch(() => {}); });
   await page.waitForFunction(() => document.querySelector('#pawse-protection-root')?.shadowRoot?.textContent.includes('checking ahead'), {timeout:5000});
   assert(await page.$eval('video', v => v.paused));
-  await page.waitForFunction(() => document.querySelector('#pawse-protection-root')?.shadowRoot?.textContent.includes('find another video'), {timeout:15000});
+  await page.waitForFunction(() => document.querySelector('#pawse-protection-root')?.shadowRoot?.textContent.includes('pause and pick another'), {timeout:15000});
   assert(calls.some(c => c.start === 18));
   console.log('PASS: seeking into an unchecked window holds and prioritizes the new position');
   delay = 100;
@@ -98,12 +98,18 @@ try {
   const extensionId = new URL(target.url()).host;
   const popup = await browser.newPage();
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
-  await popup.evaluate(async () => {
+  // Approval needs the parent PIN (test-only PIN set here); a wrong PIN must not release playback.
+  const approvals = await popup.evaluate(async () => {
     const [tab] = await chrome.tabs.query({url:'https://www.youtube.com/*'});
-    await chrome.runtime.sendMessage({type:'allow_once', videoId:'aqz-KE-bpKQ', tabId:tab.id});
+    const set = await chrome.runtime.sendMessage({type:'set_parent_pin', pin:'2468'});
+    const wrong = await chrome.runtime.sendMessage({type:'allow_once', videoId:'aqz-KE-bpKQ', tabId:tab.id, pin:'1111'});
+    await new Promise(r => setTimeout(r, 700));
+    const right = await chrome.runtime.sendMessage({type:'allow_once', videoId:'aqz-KE-bpKQ', tabId:tab.id, pin:'2468'});
+    return {set: set?.ok, wrong: wrong?.ok, right: right?.ok};
   });
+  assert.deepEqual([approvals.set, approvals.wrong, approvals.right], [true, false, true], JSON.stringify(approvals));
   await page.waitForFunction(() => !document.querySelector('video').paused, {timeout:5000});
-  console.log('PASS: parent override releases playback');
+  console.log('PASS: wrong parent PIN rejected; correct PIN override releases playback');
   assert.deepEqual(errors, []);
   fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({held, calls: calls.map(({frames, ...c}) => ({...c, frameCount:frames.length})), errors}, null, 2));
 } catch (error) {
