@@ -90,6 +90,15 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
+    if (message?.type === "get_backend_health") {
+      try {
+        const response = await fetch("http://127.0.0.1:8000/health", {signal: AbortSignal.timeout(3000)});
+        if (!response.ok) throw new Error("Backend unavailable");
+        const health = await response.json();
+        sendResponse({ok: health.service === "pawse", keyConfigured: health.ok === true});
+      } catch { sendResponse({ok: false, keyConfigured: false}); }
+      return;
+    }
     if (message?.type === "classify_frames") {
       if (!SproutSites.isValidKey(message.scan?.videoId || "")) throw new Error("Invalid video key");
       const prefs = await settings();

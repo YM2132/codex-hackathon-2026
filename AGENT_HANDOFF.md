@@ -1,6 +1,6 @@
 # Pawse integration handoff
 
-Updated 2026-11-01. Implementation baseline: **`feat/multisite-pawse`** (multi-site work on top of `2bfae13` from `feat/unified-sprout-extension`). This document describes the integrated code, not a future architecture proposal.
+Updated 2026-11-01. Implementation baseline: main at `dca9e9c`, plus judge-installation packaging on `feat/judge-installation`. This document describes the integrated code, not a future architecture proposal.
 
 ## Start here
 
@@ -8,7 +8,7 @@ The unified extension combines Raja’s latest Pawse UI, Danyal’s buffered-med
 
 ```sh
 git fetch origin
-git switch feat/unified-sprout-extension
+git switch main
 git pull --ff-only
 uv sync
 # Configure OPENAI_API_KEY in your own local .env; never put it in extension code.
@@ -17,7 +17,7 @@ uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000
 
 Load the **repository root** through Chrome → `chrome://extensions` → Developer mode → Load unpacked. Do not load `lookahead/extension` alongside it: that is the older capture-only experiment. Open Pawse, complete setup, enable protection, and select **Ready / No sample state** for live calls. Reload open video tabs after installing or updating; the capture hook needs to run before the player creates its media buffers. Press Play if browser autoplay or the YouTube consent dialog holds playback.
 
-`GET http://127.0.0.1:8000/health` reports whether a key is configured; it does not verify the key’s validity or API access. Each teammate needs their own backend process and configured key. Python ≥3.11 and uv are needed for the backend; Node, npm, ffmpeg and a suitable Chrome executable are also needed for the browser harness. The extension’s runtime does not invoke ffmpeg or yt-dlp.
+`GET http://127.0.0.1:8000/health` reports whether a key is configured; it does not verify the key’s validity or API access. Each teammate needs their own backend process and configured key. Python ≥3.11 is needed for the backend; uv is optional with the packaged launcher; Node, npm, ffmpeg and a suitable Chrome executable are also needed for the browser harness. The extension’s runtime does not invoke ffmpeg or yt-dlp.
 
 ## Branches and merge guidance
 
@@ -29,9 +29,9 @@ Load the **repository root** through Chrome → `chrome://extensions` → Develo
 | `feat/unified-sprout-extension` | Working integration; `5dab10e` wires the pipeline, `17408c2` merges Pawse and removes the temporary demo restriction |
 | `lookahead-preview` (later commits) | Multi-site capture: video↔MediaSource mapping, shadow-DOM players, DRM/worker detection, plain-file decoder, site allowlist, cross-site harness |
 | `feat/youtube-protection-extension` (`785853d`–`9729853`) | Explicit “Pawse time” pause copy, animated Pawse sprite with tap-to-play, parent PIN for controls and approvals |
-| `feat/multisite-pawse` | This branch: merges all of the above into Pawse and adds `sites.js` adapters for all supported sites |
+| `feat/multisite-pawse` | Merged into main: merges all of the above into Pawse and adds `sites.js` adapters for all supported sites |
 
-Start further integration from this branch. If your working branch has additional changes, commit them first and merge `origin/feat/unified-sprout-extension`; resolve conflicts deliberately. Do not replace the integrated files wholesale with earlier UI or capture versions. Do not cherry-pick a merge commit without understanding which parent you need. Keep the existing branch history and teammate changes.
+Start further integration from this branch. If your working branch has additional changes, commit them first and merge `origin/main`; resolve conflicts deliberately. Do not replace the integrated files wholesale with earlier UI or capture versions. Do not cherry-pick a merge commit without understanding which parent you need. Keep the existing branch history and teammate changes.
 
 Likely conflict hotspots: `manifest.json`, `content.js`, `popup.*`, `README.md`, and `.gitignore`. Preserve both the new Pawse assets and the live integration contracts below. Keep `.env`, `.venv/`, `artifacts/`, and generated image output ignored. The original local hackathon spec is untracked and describes an older Jev/text/SSE design; it is not the current implementation contract.
 
@@ -161,3 +161,11 @@ Harness output is under ignored `artifacts/unified-browser-test/` and `artifacts
 - The unauthenticated relay is for loopback development only. Its Origin checks are not authentication. Hosted deployment requires authentication and a deliberate extension/backend configuration change. Keep API keys server-side and out of commits, logs, screenshots and handoffs.
 
 For new UI changes, preserve the live-versus-preview distinction and report window-level results without claiming an entire video is safe. For model changes, preserve strict parsing and the parent policy. For capture changes, run the codec-switch/seek tests and a live YouTube check. After updating installed code, reload the extension **and** the YouTube tab; restart the backend after Python changes.
+
+## Judge installation handoff
+
+See [INSTALL.md](INSTALL.md). `start.py` bootstraps `.pawse-runtime` with the four pinned dependencies in `requirements-runtime.txt`; platform launchers need Python 3.11+ but no uv/Git/Node. The packaging builder only includes explicitly allowed runtime files. Update its allowlist and packaging tests if adding runtime assets or imports. The backend `/health` now identifies `service: "pawse"`; the popup uses it for connection status. Existing backends must restart to expose that field.
+
+Build with `python3 scripts/build_package.py`. Distribute `dist/pawse-hackathon.zip` for judges; the extension-only ZIP still needs a local backend. A release is not a hosted backend and contains no key. CI builds on PR/main and uploads release assets only when a GitHub Release is published. Judge setup remains local unless a separate authenticated hosted deployment is configured.
+
+Judge-installation validation: 17 Python tests and 8 Node tests passed locally. A freshly extracted kit installed runtime dependencies and started its backend. The packaged extension passed the deterministic Chrome harness, including connection status and rejection of a wrong parent PIN. macOS launcher/runtime were exercised locally; Windows/Linux checks run in CI, with native double-click UI behavior still requiring a platform smoke test.

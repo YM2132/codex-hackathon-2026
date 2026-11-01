@@ -16,6 +16,11 @@
       <button class="icon-button" id="helpButton" aria-label="About Pawse" title="About Pawse">?</button>
     </header>
 
+    <section class="backend-status" aria-label="Backend connection">
+      <p id="backendStatus" role="status">Checking backend connection…</p>
+      <button id="checkBackend" type="button" class="text-button">Check connection</button>
+    </section>
+
     <section id="setupView" class="setup-view" hidden>
       <div class="welcome-art"><img src="assets/pawse-idle-cutout.png" alt=""></div>
       <h1>Pause. Ask a grown-up.</h1>
@@ -140,7 +145,7 @@
       <span class="brand-mark" aria-hidden="true">🐾</span>
       <p class="eyebrow">About Pawse</p>
       <h2>Parents decide. Pawse adds a pause.</h2>
-      <p>Pawse checks buffered video frames ahead of playback using OpenAI Decisions. Start the local backend for live checks. This prototype samples visuals only and may miss content between frames. Parent controls are not PIN protected.</p>
+      <p>Pawse checks buffered video frames ahead of playback using OpenAI Decisions. Keep the Pawse backend running for live checks. This prototype samples visuals only and may miss content between frames. Parent controls and approvals use your PIN.</p>
       <button id="doneHelp" class="button button-primary button-wide">Got it</button>
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
