@@ -33,12 +33,21 @@
         :host { all:initial; position:fixed; right:18px; bottom:18px; z-index:2147483000; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
         :host([hidden]) { display:none !important; }
         * { box-sizing:border-box; }
-        .pet { display:grid; width:62px; height:62px; place-items:center; overflow:hidden; padding:0; border:3px solid white; border-radius:50%; background:#eff8ee; box-shadow:0 5px 22px #173d3840; cursor:pointer; animation:buddy-bob 3.2s ease-in-out infinite; }
-        .pet img { width:100%; height:100%; object-fit:cover; }
+        .pet { display:grid; grid-template-rows:86px 18px; width:88px; height:108px; place-items:center; overflow:visible; padding:0; border:0; border-radius:0; background:transparent; filter:drop-shadow(0 5px 8px #173d3840); cursor:pointer; animation:buddy-bob 3.2s ease-in-out infinite; }
+        .pet img { grid-row:1; width:86px; height:86px; object-fit:contain; transition:transform .25s ease,filter .25s ease; }
+        .pet:hover img { transform:scale(1.08) rotate(-3deg); }
+        .pet[data-mood="happy"] img { filter:saturate(1.1); }
+        .pet[data-mood="thinking"] img { animation:buddy-think 1s ease-in-out infinite alternate; }
+        .pet[data-mood="concerned"] img { filter:saturate(.82); }
+        .pet[data-mood="concerned"]::after { border-color:#f2dba8; color:#795b1c; }
+        .pet[data-mood="wave"] img { animation:buddy-wave .65s ease-in-out 2; }
+        .pet::after { grid-row:2; content:attr(data-label); align-self:start; padding:4px 10px; border:1px solid #e2eee1; border-radius:999px; background:#fffdf8; color:#285747; font:700 11px/1.2 system-ui,sans-serif; box-shadow:0 3px 12px #173d3820; white-space:nowrap; }
         .pet:focus-visible,.close:focus-visible,.action:focus-visible { outline:3px solid #70c7a4; outline-offset:3px; }
         @keyframes buddy-bob { 0%,100% { transform:translateY(1px); } 50% { transform:translateY(-4px); } }
-        @media (prefers-reduced-motion: reduce) { .pet { animation:none; } }
-        .panel { position:absolute; right:0; bottom:74px; width:min(292px,calc(100vw - 28px)); padding:16px; border:1px solid #e5e9e2; border-radius:20px; background:#fffdf8; color:#183a3c; box-shadow:0 14px 48px #102a2b35; }
+        @keyframes buddy-think { from { transform:rotate(-5deg) translateY(2px); } to { transform:rotate(5deg) translateY(-2px); } }
+        @keyframes buddy-wave { 0%,100% { transform:rotate(0); } 25% { transform:rotate(-10deg) translateY(-3px); } 75% { transform:rotate(10deg) translateY(-3px); } }
+        @media (prefers-reduced-motion: reduce) { .pet,.pet img { animation:none !important; transition:none; } }
+        .panel { position:absolute; right:0; bottom:112px; width:min(292px,calc(100vw - 28px)); padding:16px; border:1px solid #e5e9e2; border-radius:20px; background:#fffdf8; color:#183a3c; box-shadow:0 14px 48px #102a2b35; }
         .panel[hidden] { display:none !important; }
         .panel-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
         .mini-pet { width:42px; height:42px; flex:0 0 42px; border-radius:13px; object-fit:cover; }
@@ -49,7 +58,7 @@
         .action.secondary { background:#edf3ef; color:#254840; }
         .close { position:absolute; top:8px; right:9px; width:27px; height:27px; border:0; border-radius:50%; background:transparent; color:#637175; font:20px system-ui,sans-serif; cursor:pointer; }
       </style>
-      <button class="pet" id="buddyToggle" aria-label="Open Sprout helper" aria-expanded="false"><img alt=""></button>
+      <button class="pet" id="buddyToggle" data-mood="happy" data-label="Sprout" aria-label="Sprout pet: open helper" aria-expanded="false"><img alt=""></button>
       <section class="panel" id="buddyPanel" role="dialog" aria-label="Sprout helper" hidden>
         <button class="close" id="buddyClose" aria-label="Close Sprout helper">×</button>
         <div class="panel-head"><img class="mini-pet" alt=""><h2 class="panel-title" id="buddyTitle"></h2></div>
@@ -68,6 +77,8 @@
       buddyPanelOpen = !buddyPanelOpen;
       panel.hidden = !buddyPanelOpen;
       toggle.setAttribute("aria-expanded", String(buddyPanelOpen));
+      if (buddyPanelOpen) setBuddyMood("wave", "Hi!");
+      else updateBuddyMood();
     });
     buddyShadow.getElementById("buddyClose").addEventListener("click", closeBuddyPanel);
     buddyShadow.getElementById("buddyAsk").addEventListener("click", (event) => requestAdultHelp(event.currentTarget));
@@ -79,6 +90,22 @@
     if (!buddyShadow) return;
     buddyShadow.getElementById("buddyPanel").hidden = true;
     buddyShadow.getElementById("buddyToggle").setAttribute("aria-expanded", "false");
+    updateBuddyMood();
+  }
+
+  function setBuddyMood(mood, label) {
+    const pet = buddyShadow?.getElementById("buddyToggle");
+    if (!pet) return;
+    pet.dataset.mood = mood;
+    pet.dataset.label = label;
+    pet.setAttribute("aria-label", `Sprout pet, ${label}: open helper`);
+  }
+
+  function updateBuddyMood() {
+    if (lastStatus === "connecting" || lastStatus === "checking") setBuddyMood("thinking", "Hmm…");
+    else if (pauseStatuses.has(lastStatus)) setBuddyMood("concerned", "Pause");
+    else if (buddyPanelOpen) setBuddyMood("wave", "Hi!");
+    else setBuddyMood("happy", "Sprout");
   }
 
   function updateBuddy(status, decision = {}) {
@@ -89,8 +116,9 @@
       return;
     }
     buddyHost.hidden = false;
+    updateBuddyMood();
     const copy = status === "safe"
-      ? { title: "All set for this profile", detail: decision.preview ? "This is only a sample state, not a model result." : "Sprout checked this video for your family." }
+      ? { title: "This video is ready", detail: decision.preview ? "Sample state only. Sprout hasn’t checked this video yet." : "This video passed your family’s check." }
       : status === "no_video"
         ? { title: "Hi, I’m Sprout!", detail: "I’m here to help your family choose videos. Open a video to check its Sprout status." }
         : { title: "I’m Sprout!", detail: "I’m here to help your family choose videos." };
@@ -107,6 +135,7 @@
     if (button) {
       button.textContent = "Please get your grown-up";
       button.disabled = true;
+      setBuddyMood("concerned", "Ask a grown-up");
     }
   }
 
