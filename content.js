@@ -10,12 +10,13 @@
   let buddyHost;
   let buddyShadow;
   let buddyPanelOpen = false;
+  let refreshGeneration = 0;
+  const engine = new SproutEngine(render);
   const pauseStatuses = new Set(["connecting", "review", "blocked"]);
 
   function videoIdFromUrl() {
     const url = new URL(location.href);
-    if (url.pathname === "/watch") return url.searchParams.get("v") || "";
-    if (url.pathname.startsWith("/shorts/")) return url.pathname.split("/")[2] || "";
+    if (url.pathname === "/watch" && url.searchParams.get("v") === SproutGuard.DEMO_VIDEO_ID) return SproutGuard.DEMO_VIDEO_ID;
     return "";
   }
 
@@ -90,7 +91,7 @@
     }
     buddyHost.hidden = false;
     const copy = status === "safe"
-      ? { title: "All set for this profile", detail: decision.preview ? "This is only a sample state, not a model result." : "Sprout checked this video for your family." }
+      ? { title: "All set for this profile", detail: decision.preview ? "This is only a sample state, not a model result." : "Sprout checked the next few seconds for your family." }
       : status === "no_video"
         ? { title: "Hi, I’m Sprout!", detail: "I’m here to help your family choose videos. Open a video to check its Sprout status." }
         : { title: "I’m Sprout!", detail: "I’m here to help your family choose videos." };
@@ -161,12 +162,8 @@
     else location.assign("https://www.youtube.com/");
   }
 
-  function resumeVideo() {
-    const video = document.querySelector("video");
-    if (video?.paused) video.play().catch(() => {});
-  }
-
   function render(decision) {
+    lastStatus = decision?.status || "connecting";
     if (!ensureOverlay()) {
       clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => render(decision), 700);
@@ -179,19 +176,19 @@
     if (["off", "allowed_once"].includes(status)) {
       root.remove();
       root = shadow = null;
-      resumeVideo();
       return;
     }
+    root.style.pointerEvents = status === "safe" ? "none" : "auto";
     if (status === "safe") {
-      surface.innerHTML = `<div class="badge"><i></i>${decision.preview ? "Preview only · no model result" : "Sprout checked this video"}</div>`;
+      surface.innerHTML = `<div class="badge"><i></i>${decision.preview ? "Preview only · no model result" : "Sprout · checking ahead"}</div>`;
       return;
     }
 
     pauseVideo();
     const states = {
       connecting: {
-        title: "Sprout needs a grown-up to check",
-        detail: "Sprout can’t check this video yet. Please ask your grown-up before watching.",
+        title: "Sprout is checking ahead",
+        detail: "One moment while Sprout checks the next few seconds.",
         note: "Your grown-up can check Sprout in the toolbar.",
         icon: "?",
         noteClass: "offline-note"
@@ -228,6 +225,7 @@
           </div>
         </div>
       </section>`;
+    if (decision.detail) surface.querySelector("#sprout-detail").textContent = decision.detail;
     surface.querySelector('[data-action="back"]')?.addEventListener("click", goBack);
     surface.querySelector('[data-action="wait"]')?.addEventListener("click", (event) => {
       const button = event.currentTarget;
@@ -242,23 +240,25 @@
   }
 
   async function refresh() {
+    const generation = ++refreshGeneration;
+    clearTimeout(refreshTimer);
     const id = videoIdFromUrl();
-    if (!id) {
-      root?.remove(); root = shadow = null; currentVideoId = ""; lastStatus = "";
-      const prefs = await chrome.runtime.sendMessage({ type: "get_settings" }).catch(() => ({}));
-      updateBuddy(prefs.protectionOn && prefs.setupComplete ? "no_video" : "off");
-      return;
-    }
-    if (id === currentVideoId && lastStatus) return;
     currentVideoId = id;
-    lastStatus = "checking";
-    render({ status: "connecting" });
-    try {
-      const result = await chrome.runtime.sendMessage({ type: "get_decision", videoId: id });
-      if (id === videoIdFromUrl()) render(result);
-    } catch {
-      render({ status: "connecting" });
+    engine.reset(id);
+    if (!id) {
+      root?.remove(); root = shadow = null; lastStatus = "";
     }
+    try {
+      const prefs = await chrome.runtime.sendMessage({type: "get_settings"});
+      if (generation !== refreshGeneration) return;
+      if (!id) { updateBuddy("off"); return; }
+      const decision = await chrome.runtime.sendMessage({type: "get_decision", videoId: id});
+      if (generation !== refreshGeneration) return;
+      if (!prefs.setupComplete || !prefs.protectionOn) engine.reset(id, "off");
+      else if (decision.status === "allowed_once") engine.reset(id, "allowed_once");
+      else if (prefs.previewScenario !== "off") engine.reset(id, prefs.previewScenario, true);
+      else engine.reset(id, "live");
+    } catch { engine.reset(id, "connecting"); }
   }
 
   chrome.runtime.onMessage.addListener((message) => {
@@ -267,7 +267,8 @@
       refresh();
     }
     if (message?.type === "allow_once" && message.videoId === currentVideoId) {
-      render({ status: "allowed_once" });
+      engine.resumeAfterCheck = true;
+      engine.reset(currentVideoId, "allowed_once");
     }
     if (message?.type === "back_to_results") goBack();
   });
@@ -298,6 +299,11 @@
     }
   }, true);
 
+  document.addEventListener("yt-navigate-start", () => {
+    ++refreshGeneration; clearTimeout(refreshTimer); engine.reset("");
+    root?.remove(); root = shadow = null;
+  });
+  document.addEventListener("yt-navigate-finish", refresh);
   let lastUrl = location.href;
   new MutationObserver(() => {
     if (location.href !== lastUrl) {
@@ -305,6 +311,6 @@
       lastStatus = "";
       refresh();
     }
-  }).observe(document.documentElement, { childList: true, subtree: true });
+  }).observe(document, { childList: true, subtree: true });
   refresh();
 })();

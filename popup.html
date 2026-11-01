@@ -20,7 +20,7 @@
       <div class="welcome-art"><img src="assets/sprout-mascot-512.png" alt="Sprout, your family mode companion"></div>
       <p class="eyebrow">A calmer way to watch</p>
       <h1>Give little viewers a pause button.</h1>
-      <p class="intro">Sprout can pause a YouTube video when a parent should take a look. You stay in control of every choice.</p>
+      <p class="intro">Today’s demo checks only XnWESGXnGwY. Sprout pauses before upcoming content that needs a parent’s review.</p>
       <label class="field-label" for="setupAge">Who is watching?</label>
       <select id="setupAge" class="select-control">
         <option value="3-5">Ages 3–5</option>
@@ -87,7 +87,7 @@
           </div>
         </form>
         <div id="ruleList" class="rule-list" aria-live="polite"></div>
-        <p class="rules-note"><span aria-hidden="true">ⓘ</span> Rules are saved in Sprout settings. They won’t affect decisions until the moderation service is connected.</p>
+        <p class="rules-note"><span aria-hidden="true">ⓘ</span> Rules are checked against upcoming visual samples. Sound and spoken words are not assessed.</p>
       </section>
 
       <details class="preview-tools">
@@ -102,7 +102,7 @@
         </select>
       </details>
 
-      <footer class="privacy-note"><span aria-hidden="true">⌂</span> Built for parent control. No video is sent in preview mode.</footer>
+      <footer class="privacy-note"><span aria-hidden="true">⌂</span> Built for parent control. In live mode, sampled frames go through your local backend to OpenAI. Preview mode sends none.</footer>
     </section>
 
     <dialog id="helpDialog" class="help-dialog">
@@ -110,7 +110,7 @@
       <span class="brand-mark" aria-hidden="true">✳</span>
       <p class="eyebrow">About Sprout</p>
       <h2>Parents decide. Sprout adds a pause.</h2>
-      <p>This prototype shows the setup, review, and parent override flow. Sample states are clearly marked; the moderation model is not connected yet.</p>
+      <p>Sprout checks buffered video frames ahead of playback using OpenAI Decisions. Start the local backend for live checks. This prototype samples visuals only and may miss content between frames. Parent controls are not PIN protected.</p>
       <button id="doneHelp" class="button button-primary button-wide">Got it</button>
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>

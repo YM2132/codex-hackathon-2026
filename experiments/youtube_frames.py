@@ -111,10 +111,13 @@ def request_body(frames: list[dict], output: Path) -> dict:
                           for name, prompt in QUESTIONS.items()]}
 
 
-def parse_answers(response: dict) -> dict:
+def parse_answers(response: dict, expected=None) -> dict:
+    expected = set(QUESTIONS if expected is None else expected)
     answers = response.get("answers", [])
+    if not isinstance(answers, list) or any(not isinstance(a, dict) for a in answers):
+        raise RuntimeError("Invalid answers; classification incomplete")
     names = [answer.get("name") for answer in answers]
-    if len(set(names)) != len(names) or set(names) != set(QUESTIONS):
+    if any(not isinstance(name, str) for name in names) or len(set(names)) != len(names) or set(names) != expected:
         raise RuntimeError("Missing, duplicate, or unexpected category answers; classification incomplete")
     probabilities = {}
     for answer in answers:

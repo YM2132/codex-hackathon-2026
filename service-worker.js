@@ -32,7 +32,8 @@ async function settings() {
   return { ...DEFAULT_SETTINGS, ...saved };
 }
 
-async function decide(videoId) {
+async function decide(videoId, tabId) {
+  if (videoId !== "XnWESGXnGwY") return {videoId, status: "off", preview: false};
   const prefs = await settings();
   if (!prefs.setupComplete || !prefs.protectionOn) {
     return { videoId, status: "off", preview: false };
@@ -47,6 +48,9 @@ async function decide(videoId) {
     return { videoId, ...(PREVIEW_STATES[prefs.previewScenario] || PREVIEW_STATES.review) };
   }
 
+  const saved = await chrome.storage.session.get(`decision:${tabId}`);
+  const recent = saved[`decision:${tabId}`];
+  if (recent?.videoId === videoId && Date.now() - recent.updatedAt < 5000) return recent;
   return {
     videoId,
     status: "connecting",
@@ -65,6 +69,24 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
+    if (message?.type === "classify_frames") {
+      if (message.scan?.videoId !== "XnWESGXnGwY") throw new Error("This demo checks only XnWESGXnGwY");
+      const prefs = await settings();
+      if (!prefs.setupComplete || !prefs.protectionOn || prefs.previewScenario !== "off") {
+        sendResponse({ok: false, error: "Live checks are disabled"}); return;
+      }
+      const response = await fetch("http://127.0.0.1:8000/classify", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({...message.scan, ageBand: prefs.ageBand, customRules: prefs.customRules}),
+        signal: AbortSignal.timeout(25000)
+      });
+      if (!response.ok) throw new Error(`Backend HTTP ${response.status}`);
+      sendResponse(await response.json()); return;
+    }
+    if (message?.type === "report_decision" && sender.tab) {
+      await chrome.storage.session.set({[`decision:${sender.tab.id}`]: {...message.decision, updatedAt: Date.now()}});
+      sendResponse({ok: true}); return;
+    }
     if (message?.type === "get_settings") {
       sendResponse(await settings());
       return;
@@ -72,14 +94,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "save_settings") {
       const prefs = { ...DEFAULT_SETTINGS, ...(message.settings || {}) };
       await chrome.storage.sync.set(prefs);
-      if (sender.tab?.id != null) {
-        chrome.tabs.sendMessage(sender.tab.id, { type: "refresh_protection" }).catch(() => {});
-      }
+      await chrome.storage.session.set({ allowedVideoIds: [] });
+      const tabs = await chrome.tabs.query({url: "https://www.youtube.com/*"});
+      await Promise.all(tabs.map(tab => chrome.tabs.sendMessage(tab.id, {type: "refresh_protection"}).catch(() => {})));
       sendResponse(prefs);
       return;
     }
     if (message?.type === "get_decision") {
-      sendResponse(await decide(String(message.videoId || "")));
+      sendResponse(await decide(String(message.videoId || ""), sender.tab?.id ?? message.tabId));
       return;
     }
     if (message?.type === "request_adult_review") {
@@ -135,16 +157,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
     sendResponse({ ok: false });
-  })().catch(() => sendResponse({ ok: false }));
+  })().catch(() => sendResponse({ ok: false, error: "Sprout cannot reach the Decisions service. Start the local backend and retry." }));
   return true;
 });
-
-/*
- * Algorithm team integration contract:
- * replace the preview branch in decide() with a call that accepts videoId and
- * the selected ageBand and customRules, then returns
- * {status, title, detail, preview:false}. Custom rules are parent-authored
- * plain-language preferences stored in chrome.storage.sync.
- * Keep provider credentials out of this extension package; call an authenticated
- * team service or a protected backend instead of embedding an API key here.
- */

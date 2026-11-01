@@ -49,16 +49,17 @@ async function getDecision(video) {
     };
     return states[settings.previewScenario] || { status: "connecting" };
   }
-  return chrome.runtime.sendMessage({ type: "get_decision", videoId: video.id });
+  return chrome.runtime.sendMessage({ type: "get_decision", videoId: video.id, tabId: video.tabId });
 }
 
 function describeDecision(decision, settings, video) {
+  if (video.id !== "XnWESGXnGwY" && extensionMode) return {title: "Open the demo video", text: "Today’s build checks only XnWESGXnGwY. Other videos are unaffected.", icon: "↗", kind: ""};
   if (!video.isYoutube) return { title: "Open YouTube", text: "Protection status appears when you visit a YouTube video.", icon: "↗", kind: "" };
   if (!video.id) return { title: "No video open", text: "Open a video to see its protection status here.", icon: "•", kind: "" };
   if (!settings.protectionOn) return { title: "Protection is off", text: "Turn it on to use the selected profile on YouTube.", icon: "○", kind: "" };
-  if (decision.status === "safe") return { title: "Looks okay for this profile", text: decision.preview ? "Preview only: this is not a model result." : "Sprout checked this video for this profile.", icon: "✓", kind: "good" };
+  if (decision.status === "safe") return { title: "Looks okay for this profile", text: decision.preview ? "Preview only: this is not a model result." : (decision.detail || "Upcoming visual samples checked for this profile."), icon: "✓", kind: "good" };
   if (decision.status === "review") return { title: "A grown-up should check this one", text: "Playback is paused until an adult chooses what to do.", icon: "!", kind: "review" };
-  if (decision.status === "blocked") return { title: "Paused for this profile", text: "This sample state keeps playback paused.", icon: "Ⅱ", kind: "blocked" };
+  if (decision.status === "blocked") return { title: "Paused for this profile", text: (decision.preview ? "This sample state keeps playback paused." : (decision.detail || "Upcoming content needs your review.")), icon: "Ⅱ", kind: "blocked" };
   if (decision.status === "connecting") return { title: "Sprout can’t check yet", text: "Playback stays paused until a grown-up checks or the moderation service is connected.", icon: "?", kind: "review" };
   if (decision.status === "allowed_once") return { title: "Allowed for this video", text: "Playback can continue for this video only.", icon: "✓", kind: "good" };
   return { title: "Model not connected yet", text: "Protection is on. The team’s moderation service will provide video decisions here.", icon: "…", kind: "" };

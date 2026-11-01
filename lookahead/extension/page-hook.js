@@ -21,16 +21,46 @@
     addSourceBuffer: MediaSource.prototype.addSourceBuffer,
     appendBuffer: SourceBuffer.prototype.appendBuffer,
     remove: SourceBuffer.prototype.remove,
+    changeType: SourceBuffer.prototype.changeType,
     srcObjectSet: Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'srcObject')?.set,
   };
 
   let nextMsId = 1, nextSbId = 1;
   const msIds = new WeakMap();
+  const mediaUrls = new Map();
+  const createObjectURL = URL.createObjectURL;
+  URL.createObjectURL = function (object) {
+    const url = Reflect.apply(createObjectURL, URL, [object]);
+    if (object instanceof MediaSource) mediaUrls.set(url, object);
+    return url;
+  };
+  const revokeObjectURL = URL.revokeObjectURL;
+  URL.revokeObjectURL = function (url) {
+    // YouTube may revoke a blob URL immediately after attaching it. Keep its
+    // identity until navigation so the current player's record remains resolvable.
+    return Reflect.apply(revokeObjectURL, URL, [url]);
+  };
   const sbInfo = new WeakMap();          // SourceBuffer -> record
   const sourceBuffers = [];              // records, in creation order
+  // Retain only the current player's buffers after a grace period for attachment.
+  setInterval(() => {
+    const v = mainVideo();
+    const url = v?.currentSrc || v?.src;
+    const active = mediaUrls.get(url);
+    const activeId = active && msIds.get(active);
+    for (let i = sourceBuffers.length - 1; i >= 0; i--) {
+      const rec = sourceBuffers[i];
+      if (rec.msId !== activeId && performance.now() - rec.createdAt > 30000) {
+        rec.chunks.length = 0; rec.bytes = 0; sourceBuffers.splice(i, 1);
+      }
+    }
+    if (mediaUrls.size > 16) for (const key of mediaUrls.keys()) {
+      if (key !== url) mediaUrls.delete(key);
+      if (mediaUrls.size <= 16) break;
+    }
+  }, 10000);
   const diag = { workersCreated: 0, mediaSourceHandleAttached: false, hookErrors: [],
     workerMseSupported: !!MediaSource.canConstructInDedicatedWorker };
-  let bypass = false;                    // true while our own decoder appends
 
   const toU8Copy = (data) => {
     if (data instanceof ArrayBuffer) return new Uint8Array(data.slice(0));
@@ -68,7 +98,6 @@
   try {
     MediaSource.prototype.addSourceBuffer = function (mime) {
       const sb = Reflect.apply(native.addSourceBuffer, this, [mime]);
-      if (bypass) return sb;
       if (!msIds.has(this)) msIds.set(this, nextMsId++);
       const rec = { id: nextSbId++, msId: msIds.get(this), mime: String(mime), createdAt: performance.now(),
         chunks: [], bytes: 0, droppedBytes: 0, appends: 0 };
@@ -80,13 +109,13 @@
 
   try {
     SourceBuffer.prototype.appendBuffer = function (data) {
-      const rec = !bypass && sbInfo.get(this);
+      const rec = sbInfo.get(this);
       if (rec) {
         try {
           const copy = toU8Copy(data);
           if (copy) {
             const before = ranges(this.buffered);
-            const chunk = { seq: rec.appends, at: performance.now(), tso: this.timestampOffset,
+            const chunk = { seq: rec.appends, at: performance.now(), tso: this.timestampOffset, mime: rec.mime,
               mode: this.mode, init: looksLikeInit(copy), bytes: copy, added: null };
             rec.chunks.push(chunk); rec.bytes += copy.byteLength; rec.appends++;
             const sb = this;
@@ -104,6 +133,17 @@
       return Reflect.apply(native.appendBuffer, this, [data]);
     };
   } catch (e) { diag.hookErrors.push('appendBuffer: ' + e); }
+
+  // YouTube can create a VP9 buffer, then switch it to AV1 before appending.
+  // Replaying those MP4 bytes as the original WebM MIME fails at the first chunk.
+  if (native.changeType) {
+    SourceBuffer.prototype.changeType = function (mime) {
+      const result = Reflect.apply(native.changeType, this, [mime]);
+      const rec = sbInfo.get(this);
+      if (rec) rec.mime = String(mime);
+      return result;
+    };
+  }
 
   // Diagnostics for paths this hook cannot observe.
   try {
@@ -153,13 +193,19 @@
   function activeVideoRecord() {
     const vids = sourceBuffers.filter(r => r.mime.startsWith('video/') && r.appends > 0);
     if (!vids.length) return null;
-    const lastMs = Math.max(...vids.map(r => r.msId));
-    return vids.filter(r => r.msId === lastMs).pop();
+    const video = mainVideo();
+    const ms = mediaUrls.get(video?.currentSrc || video?.src);
+    const attachedId = ms && msIds.get(ms);
+    return vids.filter(r => r.msId === attachedId).pop() || null;
   }
 
   const once = (target, ev, ms = 8000) => new Promise((res, rej) => {
-    const t = setTimeout(() => rej(new Error('timeout waiting for ' + ev)), ms);
-    target.addEventListener(ev, (e) => { clearTimeout(t); res(e); }, { once: true });
+    const cleanup = () => { clearTimeout(timer); target.removeEventListener(ev, done); target.removeEventListener('error', fail); };
+    const done = e => { cleanup(); res(e); };
+    const fail = () => { cleanup(); rej(new Error('decoder error waiting for ' + ev)); };
+    const timer = setTimeout(() => { cleanup(); rej(new Error('timeout waiting for ' + ev)); }, ms);
+    target.addEventListener(ev, done, {once: true});
+    target.addEventListener('error', fail, {once: true});
   });
 
   /* Replay captured encoded bytes into an isolated decoder and grab frames.
@@ -170,49 +216,57 @@
     const v = document.createElement('video');
     v.__lookaheadDecoder = true; v.muted = true; v.playsInline = true; v.preload = 'auto';
     const ms = new MediaSource();
-    v.src = URL.createObjectURL(ms);
-    await once(ms, 'sourceopen');
-    bypass = true;
-    let sb;
-    const log = { replayedChunks: 0, replayedBytes: 0, errors: [] };
+    const decoderUrl = Reflect.apply(createObjectURL, URL, [ms]);
     try {
-      sb = ms.addSourceBuffer(rec.mime);
-      // Replay from the most recent init segment onward, preserving offsets & order.
-      let start = 0;
-      for (let i = rec.chunks.length - 1; i >= 0; i--) if (rec.chunks[i].init) { start = i; break; }
-      // Earlier init chunks may still be needed if quality switched; replay everything since the first init.
-      start = rec.chunks.findIndex(c => c.init); if (start < 0) start = 0;
-      for (let i = start; i < rec.chunks.length; i++) {
-        const c = rec.chunks[i];
-        try {
-          if (sb.mode !== c.mode && !c.init) sb.mode = c.mode;
-          if (sb.timestampOffset !== c.tso) sb.timestampOffset = c.tso;
-          Reflect.apply(native.appendBuffer, sb, [c.bytes]);
-          await once(sb, 'updateend');
-          log.replayedChunks++; log.replayedBytes += c.bytes.byteLength;
-        } catch (e) { log.errors.push(`chunk ${c.seq}: ${e.message || e}`); if (log.errors.length > 5) break; }
+      v.src = decoderUrl;
+      await once(ms, 'sourceopen');
+      let sb;
+      const log = { replayedChunks: 0, replayedBytes: 0, errors: [] };
+      {
+        let decoderMime = rec.chunks[0]?.mime || rec.mime;
+        sb = Reflect.apply(native.addSourceBuffer, ms, [decoderMime]);
+        // Replay from the most recent init segment onward, preserving offsets & order.
+        let start = 0;
+        for (let i = rec.chunks.length - 1; i >= 0; i--) if (rec.chunks[i].init) { start = i; break; }
+        // Earlier init chunks may still be needed if quality switched; replay everything since the first init.
+        start = rec.chunks.findIndex(c => c.init); if (start < 0) start = 0;
+        for (let i = start; i < rec.chunks.length; i++) {
+          const c = rec.chunks[i];
+          try {
+            if (c.mime && c.mime !== decoderMime) {
+              Reflect.apply(native.changeType, sb, [c.mime]);
+              decoderMime = c.mime;
+            }
+            if (sb.mode !== c.mode && !c.init) sb.mode = c.mode;
+            if (sb.timestampOffset !== c.tso) sb.timestampOffset = c.tso;
+            Reflect.apply(native.appendBuffer, sb, [c.bytes]);
+            await once(sb, 'updateend');
+            log.replayedChunks++; log.replayedBytes += c.bytes.byteLength;
+          } catch (e) { log.errors.push(`chunk ${c.seq}: ${e.message || e}`); if (log.errors.length > 5) break; }
+        }
       }
-    } finally { bypass = false; }
-    const decoderBuffered = ranges(sb.buffered);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const frames = [];
-    for (const t of times) {
-      if (!decoderBuffered.some(([s, e]) => t >= s && t < e)) { frames.push({ requested: t, error: 'not in decoder buffer' }); continue; }
-      try {
-        if (Math.abs(v.currentTime - t) > 0.001) { v.currentTime = t; await once(v, 'seeked'); }
-        if (v.readyState < 2) await once(v, 'loadeddata');
-        const scale = Math.min(1, maxWidth / v.videoWidth);
-        canvas.width = Math.round(v.videoWidth * scale); canvas.height = Math.round(v.videoHeight * scale);
-        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-        const px = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        let sum = 0; for (let i = 0; i < px.length; i += 4 * 97) sum += px[i] + px[i + 1] + px[i + 2];
-        frames.push({ requested: t, decodedAt: v.currentTime, width: v.videoWidth, height: v.videoHeight,
-          meanLuma: sum / (3 * px.length / (4 * 97)), jpeg: canvas.toDataURL('image/jpeg', quality) });
-      } catch (e) { frames.push({ requested: t, error: String(e.message || e) }); }
+      const decoderBuffered = ranges(sb.buffered);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const frames = [];
+      for (const t of times) {
+        if (!decoderBuffered.some(([s, e]) => t >= s && t < e)) { frames.push({ requested: t, error: 'not in decoder buffer' }); continue; }
+        try {
+          if (Math.abs(v.currentTime - t) > 0.001) { v.currentTime = t; await once(v, 'seeked'); }
+          if (v.readyState < 2) await once(v, 'loadeddata');
+          const scale = Math.min(1, maxWidth / v.videoWidth);
+          canvas.width = Math.round(v.videoWidth * scale); canvas.height = Math.round(v.videoHeight * scale);
+          ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+          const px = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          let sum = 0; for (let i = 0; i < px.length; i += 4 * 97) sum += px[i] + px[i + 1] + px[i + 2];
+          frames.push({ requested: t, decodedAt: v.currentTime, width: v.videoWidth, height: v.videoHeight,
+            meanLuma: sum / (3 * px.length / (4 * 97)), jpeg: canvas.toDataURL('image/jpeg', quality) });
+        } catch (e) { frames.push({ requested: t, error: String(e.message || e) }); }
+      }
+      return { mime: rec.mime, sbId: rec.id, decoderBuffered, ...log, frames };
+    } finally {
+      URL.revokeObjectURL(decoderUrl); v.removeAttribute('src'); v.load();
     }
-    URL.revokeObjectURL(v.src); v.removeAttribute('src'); v.load();
-    return { mime: rec.mime, sbId: rec.id, decoderBuffered, ...log, frames };
   }
 
   // Raw bytes for offline verification (ffmpeg). Returns base64 of init + chunks [from, to).
@@ -235,10 +289,13 @@
 
   // Bridge to the extension's isolated world.
   window.addEventListener('message', async (ev) => {
-    if (ev.source !== window || ev.data?.tag !== 'lookahead-req') return;
+    if (ev.source !== window || ev.origin !== location.origin || ev.data?.tag !== 'lookahead-req') return;
     const { id, op, args } = ev.data;
     let result, error;
-    try { result = op === 'summary' ? summary() : op === 'decodeFuture' ? await decodeFuture(args) : undefined; }
+    try {
+      if (op === 'decodeFuture' && (!Array.isArray(args?.times) || args.times.length > 5 || !args.times.length || args.times.some(t => !Number.isFinite(t) || t < 0))) throw new Error('Invalid frame request');
+      result = op === 'summary' ? summary() : op === 'decodeFuture' ? await decodeFuture({...args, maxWidth: 512}) : undefined;
+    }
     catch (e) { error = String(e.message || e); }
     window.postMessage({ tag: 'lookahead-res', id, result, error }, '*');
   });

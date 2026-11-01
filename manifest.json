@@ -1,17 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "Sprout — YouTube family mode",
-  "version": "0.1.0",
-  "description": "A parent-controlled pause and review flow for YouTube videos.",
+  "name": "Sprout \u2014 YouTube family mode",
+  "version": "0.2.0",
+  "description": "Sprout checks buffered YouTube frames ahead of playback with OpenAI Decisions.",
   "icons": {
     "16": "assets/icons/sprout-16.png",
     "32": "assets/icons/sprout-32.png",
     "48": "assets/icons/sprout-48.png",
     "128": "assets/icons/sprout-128.png"
   },
-  "permissions": ["storage", "activeTab"],
-  "host_permissions": ["https://www.youtube.com/*"],
-  "background": { "service_worker": "service-worker.js" },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
   "action": {
     "default_title": "Sprout family mode",
     "default_icon": {
@@ -24,15 +32,35 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.youtube.com/*"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "lookahead/extension/page-hook.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "guard.js",
+        "engine.js",
+        "content.js"
+      ],
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["assets/sprout-mascot-512.png"],
-      "matches": ["https://www.youtube.com/*"]
+      "resources": [
+        "assets/sprout-mascot-512.png"
+      ],
+      "matches": [
+        "https://www.youtube.com/*"
+      ]
     }
   ]
 }
