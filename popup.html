@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pawse family mode</title>
+  <title>Pawse</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -11,16 +11,15 @@
     <header class="topbar">
       <div class="brand-lockup">
         <span class="brand-mark" aria-hidden="true">🐾</span>
-        <span><strong>Pawse</strong><small>family mode</small></span>
+        <span><strong>Pawse</strong></span>
       </div>
       <button class="icon-button" id="helpButton" aria-label="About Pawse" title="About Pawse">?</button>
     </header>
 
     <section id="setupView" class="setup-view" hidden>
-      <div class="welcome-art"><img src="assets/pawse-idle.png" alt="Pawse, your family mode companion"></div>
-      <p class="eyebrow">A calmer way to watch</p>
-      <h1>Give little viewers a pause button.</h1>
-      <p class="intro">Pawse can pause a YouTube video when a parent should take a look. You stay in control of every choice.</p>
+      <div class="welcome-art"><img src="assets/pawse-idle-cutout.png" alt=""></div>
+      <h1>Pause. Ask a grown-up.</h1>
+      <p class="intro">A little help for YouTube.</p>
       <label class="field-label" for="setupAge">Who is watching?</label>
       <select id="setupAge" class="select-control">
         <option value="3-5">Ages 3–5</option>
@@ -28,7 +27,6 @@
         <option value="9-12">Ages 9–12</option>
       </select>
       <button id="startButton" class="button button-primary button-wide">Set up protection</button>
-      <p class="fine-print">You can change these settings any time from the Pawse icon.</p>
     </section>
 
     <section id="dashboardView" hidden>
@@ -59,7 +57,7 @@
       <section class="profile-card">
         <div class="profile-copy">
           <span class="profile-icon" aria-hidden="true">◉</span>
-          <div><strong>Watching profile</strong><small>Protection is tuned for this age range.</small></div>
+          <div><strong>Age profile</strong></div>
         </div>
         <label class="sr-only" for="ageSelect">Choose an age range</label>
         <select id="ageSelect" class="compact-select">
@@ -77,22 +75,20 @@
           </div>
           <span class="rules-mark" aria-hidden="true">✎</span>
         </div>
-        <p class="rules-intro">Tell Pawse what your family would like to avoid, in your own words.</p>
         <form id="ruleForm" class="rule-form">
           <label class="sr-only" for="ruleInput">Describe a content rule</label>
-          <textarea id="ruleInput" maxlength="280" rows="3" placeholder="For example: Avoid videos with loud jump scares."></textarea>
+          <textarea id="ruleInput" maxlength="280" rows="3" placeholder="Add a family rule…"></textarea>
           <div class="rule-form-footer">
             <span id="ruleCharCount">0 / 280</span>
             <button class="button button-primary" type="submit">Add rule</button>
           </div>
         </form>
         <div id="ruleList" class="rule-list" aria-live="polite"></div>
-        <p class="rules-note"><span aria-hidden="true">ⓘ</span> Rules are saved in Pawse settings. They won’t affect decisions until the moderation service is connected.</p>
+        <p class="rules-note"><span aria-hidden="true">ⓘ</span> Available when moderation is connected.</p>
       </section>
 
       <details class="preview-tools">
         <summary>Preview the experience</summary>
-        <p>Sample states help the team demo the flow. They are not model predictions.</p>
         <label for="previewSelect">Choose a sample state</label>
         <select id="previewSelect" class="select-control">
           <option value="off">No sample state</option>
@@ -102,15 +98,15 @@
         </select>
       </details>
 
-      <footer class="privacy-note"><span aria-hidden="true">⌂</span> Built for parent control. No video is sent in preview mode.</footer>
+    <footer class="privacy-note"><span aria-hidden="true">⌂</span> Preview only · no video sent</footer>
     </section>
 
     <dialog id="helpDialog" class="help-dialog">
       <button id="closeHelp" class="icon-button close-button" aria-label="Close">×</button>
       <span class="brand-mark" aria-hidden="true">🐾</span>
       <p class="eyebrow">About Pawse</p>
-      <h2>Parents decide. Pawse adds a pause.</h2>
-      <p>This prototype shows the setup, review, and parent override flow. Sample states are clearly marked; the moderation model is not connected yet.</p>
+      <h2>Parents stay in control.</h2>
+      <p>Demo only. Moderation isn’t connected.</p>
       <button id="doneHelp" class="button button-primary button-wide">Got it</button>
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>

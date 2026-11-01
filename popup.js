@@ -53,15 +53,15 @@ async function getDecision(video) {
 }
 
 function describeDecision(decision, settings, video) {
-  if (!video.isYoutube) return { title: "Open YouTube", text: "Protection status appears when you visit a YouTube video.", icon: "↗", kind: "" };
-  if (!video.id) return { title: "No video open", text: "Open a video to see its protection status here.", icon: "•", kind: "" };
-  if (!settings.protectionOn) return { title: "Protection is off", text: "Turn it on to use the selected profile on YouTube.", icon: "○", kind: "" };
-  if (decision.status === "safe") return { title: "Looks okay for this profile", text: decision.preview ? "Preview only: this is not a model result." : "Pawse checked this video for this profile.", icon: "✓", kind: "good" };
-  if (decision.status === "review") return { title: "A grown-up should check this one", text: "Playback is paused until an adult chooses what to do.", icon: "!", kind: "review" };
-  if (decision.status === "blocked") return { title: "Paused for this profile", text: "This sample state keeps playback paused.", icon: "Ⅱ", kind: "blocked" };
-  if (decision.status === "connecting") return { title: "Pawse can’t check yet", text: "Playback stays paused until a grown-up checks or the moderation service is connected.", icon: "?", kind: "review" };
-  if (decision.status === "allowed_once") return { title: "Allowed for this video", text: "Playback can continue for this video only.", icon: "✓", kind: "good" };
-  return { title: "Model not connected yet", text: "Protection is on. The team’s moderation service will provide video decisions here.", icon: "…", kind: "" };
+  if (!video.isYoutube) return { title: "Open YouTube", text: "Pawse works on YouTube.", icon: "↗", kind: "" };
+  if (!video.id) return { title: "Choose a video", text: "Open a YouTube video to check it.", icon: "•", kind: "" };
+  if (!settings.protectionOn) return { title: "Protection is off", text: "Turn it on to check videos.", icon: "○", kind: "" };
+  if (decision.status === "safe") return { title: "Looks okay", text: decision.preview ? "Preview only · no model result." : "Ready for this profile.", icon: "✓", kind: "good" };
+  if (decision.status === "review") return { title: "Ask a grown-up", text: "Playback is paused.", icon: "!", kind: "review" };
+  if (decision.status === "blocked") return { title: "Paused for this profile", text: "Choose another video.", icon: "Ⅱ", kind: "blocked" };
+  if (decision.status === "connecting") return { title: "Pawse can’t check yet", text: "Ask a grown-up before watching.", icon: "?", kind: "review" };
+  if (decision.status === "allowed_once") return { title: "Allowed once", text: "For this session only.", icon: "✓", kind: "good" };
+  return { title: "Not connected", text: "Moderation service unavailable.", icon: "…", kind: "" };
 }
 
 function toast(message) {

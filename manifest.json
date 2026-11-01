@@ -32,10 +32,10 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "assets/pawse-idle.png",
-        "assets/pawse-thinking.png",
-        "assets/pawse-greeting.png",
-        "assets/pawse-pause.png"
+        "assets/pawse-idle-cutout.png",
+        "assets/pawse-thinking-cutout.png",
+        "assets/pawse-greeting-cutout.png",
+        "assets/pawse-pause-cutout.png"
       ],
       "matches": ["https://www.youtube.com/*"]
     }

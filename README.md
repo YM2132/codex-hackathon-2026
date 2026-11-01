@@ -1,6 +1,6 @@
 # Pawse family mode — YouTube extension prototype
 
-Pawse adds a parent-controlled pause and review flow to YouTube. This branch focuses on the interface and demo path; it does not call a moderation model yet. The YouTube companion uses four fixed Pawse sprite poses: idle, thinking, greeting, and pause. The matching pose appears in its helper panel and on the pause card; the extension toolbar uses a static Pawse icon.
+Pawse adds a parent-controlled pause and review flow to YouTube. This branch focuses on the interface and demo path; it does not call a moderation model yet. The YouTube companion uses four transparent dog sprites: idle, thinking, greeting, and pause. The matching pose appears in its helper panel and pause card; the toolbar uses a matching cutout icon.
 
 ## Parent and child flow
 
