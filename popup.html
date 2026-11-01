@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sprout family mode</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <span class="brand-mark" aria-hidden="true">✳</span>
+        <span><strong>sprout</strong><small>family mode</small></span>
+      </div>
+      <button class="icon-button" id="helpButton" aria-label="About Sprout" title="About Sprout">?</button>
+    </header>
+
+    <section id="setupView" class="setup-view" hidden>
+      <div class="welcome-art"><img src="assets/sprout-mascot-512.png" alt="Sprout, your family mode companion"></div>
+      <p class="eyebrow">A calmer way to watch</p>
+      <h1>Give little viewers a pause button.</h1>
+      <p class="intro">Sprout can pause a YouTube video when a parent should take a look. You stay in control of every choice.</p>
+      <label class="field-label" for="setupAge">Who is watching?</label>
+      <select id="setupAge" class="select-control">
+        <option value="3-5">Ages 3–5</option>
+        <option value="6-8">Ages 6–8</option>
+        <option value="9-12">Ages 9–12</option>
+      </select>
+      <button id="startButton" class="button button-primary button-wide">Set up protection</button>
+      <p class="fine-print">You can change these settings any time from the Sprout icon.</p>
+    </section>
+
+    <section id="dashboardView" hidden>
+      <div class="protection-row">
+        <div>
+          <p class="eyebrow">Your family setting</p>
+          <h1 id="profileTitle">Ages 3–5</h1>
+        </div>
+        <button id="protectionToggle" class="switch" role="switch" aria-checked="false" aria-label="Turn protection on or off"><span></span></button>
+      </div>
+      <div id="protectionHint" class="hint-row"><span class="status-dot"></span><span>Protection is off</span></div>
+
+      <section class="video-card" aria-labelledby="videoTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">On this YouTube page</p>
+            <h2 id="videoTitle">No video open</h2>
+          </div>
+          <span id="decisionIcon" class="decision-icon" aria-hidden="true">•</span>
+        </div>
+        <p id="decisionText" class="decision-copy">Open a video to see its protection status here.</p>
+        <p id="adultRequestLabel" class="adult-request" hidden>Your child asked for help with this video.</p>
+        <span id="previewLabel" class="preview-label" hidden>Preview example · no model result</span>
+        <button id="allowOnceButton" class="button button-primary button-wide" hidden>Allow this video once</button>
+        <button id="backButton" class="text-button" hidden>Back to videos</button>
+      </section>
+
+      <section class="profile-card">
+        <div class="profile-copy">
+          <span class="profile-icon" aria-hidden="true">◉</span>
+          <div><strong>Watching profile</strong><small>Protection is tuned for this age range.</small></div>
+        </div>
+        <label class="sr-only" for="ageSelect">Choose an age range</label>
+        <select id="ageSelect" class="compact-select">
+          <option value="3-5">3–5</option>
+          <option value="6-8">6–8</option>
+          <option value="9-12">9–12</option>
+        </select>
+      </section>
+
+      <section class="rules-card" aria-labelledby="rulesTitle">
+        <div class="rules-heading">
+          <div>
+            <p class="eyebrow">Parent controls</p>
+            <h2 id="rulesTitle">Family content rules</h2>
+          </div>
+          <span class="rules-mark" aria-hidden="true">✎</span>
+        </div>
+        <p class="rules-intro">Tell Sprout what your family would like to avoid, in your own words.</p>
+        <form id="ruleForm" class="rule-form">
+          <label class="sr-only" for="ruleInput">Describe a content rule</label>
+          <textarea id="ruleInput" maxlength="280" rows="3" placeholder="For example: Avoid videos with loud jump scares."></textarea>
+          <div class="rule-form-footer">
+            <span id="ruleCharCount">0 / 280</span>
+            <button class="button button-primary" type="submit">Add rule</button>
+          </div>
+        </form>
+        <div id="ruleList" class="rule-list" aria-live="polite"></div>
+        <p class="rules-note"><span aria-hidden="true">ⓘ</span> Rules are saved in Sprout settings. They won’t affect decisions until the moderation service is connected.</p>
+      </section>
+
+      <details class="preview-tools">
+        <summary>Preview the experience</summary>
+        <p>Sample states help the team demo the flow. They are not model predictions.</p>
+        <label for="previewSelect">Choose a sample state</label>
+        <select id="previewSelect" class="select-control">
+          <option value="off">No sample state</option>
+          <option value="safe">No adult check</option>
+          <option value="review">Adult review</option>
+          <option value="blocked">Paused for profile</option>
+        </select>
+      </details>
+
+      <footer class="privacy-note"><span aria-hidden="true">⌂</span> Built for parent control. No video is sent in preview mode.</footer>
+    </section>
+
+    <dialog id="helpDialog" class="help-dialog">
+      <button id="closeHelp" class="icon-button close-button" aria-label="Close">×</button>
+      <span class="brand-mark" aria-hidden="true">✳</span>
+      <p class="eyebrow">About Sprout</p>
+      <h2>Parents decide. Sprout adds a pause.</h2>
+      <p>This prototype shows the setup, review, and parent override flow. Sample states are clearly marked; the moderation model is not connected yet.</p>
+      <button id="doneHelp" class="button button-primary button-wide">Got it</button>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,8 +1,37 @@
-# codex-hackathon-2026
+# Sprout family mode — YouTube extension prototype
 
-The goal is to create a Chrome extension that acts as a content safety filter for children. We are focusing on Youtube videos to start with, wherein we want to feed multiple frames from across the video and associated metadata (transcripts, comments etc.) to evaluate whether it contains hate speech, discriminatory content, political content, sexual content, religious content, etc. Parents should be able to provide customized filters to decide how their children access it. If a video is not advisable, a live Openai Pet should redirect the child back to the previous webpage. As an extension, we could even imagine caching classification labels of videos at scale, and serving them based on the custom-set preferences, such that children only already see pre-approved videos.
+Sprout adds a parent-controlled pause and review flow to YouTube. This branch focuses on the interface and demo path; it does not call a moderation model yet. An original Images 2 mascot appears in the extension toolbar, as a small YouTube companion, and on the pause card.
 
-We need to use the OpenAI stack to implement this, including the Decisions API for filtering, Codex for building this, etc.
+## Parent and child flow
+
+1. On first open, a parent chooses an age range and turns protection on.
+2. A child opens a YouTube video. The extension content script asks the service worker for the video decision.
+3. Until the algorithm service is connected, the page shows a clear connection state. The popup's **Preview the experience** menu can switch among sample states for a demo; each sample is labeled and does not represent a model prediction.
+4. Review, blocked, and service-unavailable states pause playback and show Sprout with a short, child-friendly next step. The child can ask a grown-up (which adds a toolbar badge) or go back to videos.
+5. The parent opens the Sprout toolbar popup to see the state and any help request. They can allow the current video once, go back, or change the age profile or protection setting.
+6. Parents can add up to ten plain-language family rules in the popup. The rules are saved in Chrome sync settings for the algorithm service to consume when it is connected.
+
+## Load in Chrome
+
+1. Open `chrome://extensions`.
+2. Turn on **Developer mode**.
+3. Choose **Load unpacked** and select this repository folder.
+4. Pin the Sprout icon, visit a YouTube video, and open the extension popup.
+5. Choose **Set up protection**, then expand **Preview the experience** and select a sample state to walk through the flow. The preview is labeled and does not represent a model prediction. With protection enabled but no service connected, playback pauses and Sprout asks for a grown-up.
+
+## Algorithm handoff
+
+The adapter point is `decide()` in `service-worker.js`. It currently returns either a non-connected state or an explicit preview state. Replace the non-connected branch with the team's service call using the video ID, age band, and parent-authored `customRules`. The UI contract is:
+
+```js
+{ status: "safe" | "review" | "blocked", preview: false }
+```
+
+The extension stores only the current session's one-video override in `chrome.storage.session`. Keep API credentials on a protected server; do not ship them in this extension. The UI copy should stay categorical and avoid exposing image descriptions to children.
+
+## Local UI preview
+
+Open `popup.html` directly in a browser for the popup flow. In that mode, settings are stored in local browser storage and the sample selector works without Chrome extension APIs. On YouTube, load the unpacked extension for the player overlay and one-time parent override flow.
 
 ## Shared test video
 
