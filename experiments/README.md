@@ -55,3 +55,22 @@ uv run python -m unittest discover -s tests -v
 ```
 
 API format: [OpenAI Decisions guide](https://developers.openai.com/api/docs/guides/decisions), [create endpoint](https://developers.openai.com/api/reference/resources/decisions/methods/create).
+
+## Spliced test videos
+
+`splice_demo.py` creates two local MP4s using the first 15 seconds of `4s3c1KObSaI` as the base. Each inserts one of the existing clips at 7.5 seconds, then resumes the remaining 7.5 seconds of the base. The inserts retain their original audio; the outputs are H.264/AAC, 1280×720, 30 fps.
+
+| Output | Insert from original source | Insert interval in output | Total duration |
+| --- | --- | --- | --- |
+| `demo-insert-53-72.mp4` | 0:53–1:12 | 7.5–26.5s | 34s |
+| `demo-insert-76-102.mp4` | 1:16–1:42 | 7.5–33.5s | 41s |
+
+Prepare a base file containing precisely source 0–15s, plus audio containing precisely source 53–102s from the insert video. Use yt-dlp's `--force-keyframes-at-cuts` when trimming; stream-copy audio can include an earlier starting segment. The existing local source files can be used with:
+
+```sh
+python3 experiments/splice_demo.py \
+  --base artifacts/demo-videos/source/base.mp4 \
+  --audio artifacts/demo-videos/source/insert-audio-exact.m4a
+```
+
+Outputs and `timeline.json` are under `artifacts/demo-videos/`. Existing output videos are never overwritten. The timeline marks inserted material, not independently verified unsafe-event boundaries. The videos are test fixtures and remain local.
