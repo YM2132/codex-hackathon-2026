@@ -11,6 +11,12 @@
   let buddyShadow;
   let buddyPanelOpen = false;
   const pauseStatuses = new Set(["connecting", "review", "blocked"]);
+  const buddySprites = {
+    idle: "assets/sprout-idle.png",
+    thinking: "assets/sprout-thinking.png",
+    greeting: "assets/sprout-greeting.png",
+    pause: "assets/sprout-pause.png"
+  };
 
   function videoIdFromUrl() {
     const url = new URL(location.href);
@@ -36,16 +42,11 @@
         .pet { display:grid; grid-template-rows:86px 18px; width:88px; height:108px; place-items:center; overflow:visible; padding:0; border:0; border-radius:0; background:transparent; filter:drop-shadow(0 5px 8px #173d3840); cursor:pointer; animation:buddy-bob 3.2s ease-in-out infinite; }
         .pet img { grid-row:1; width:86px; height:86px; object-fit:contain; transition:transform .25s ease,filter .25s ease; }
         .pet:hover img { transform:scale(1.08) rotate(-3deg); }
-        .pet[data-mood="happy"] img { filter:saturate(1.1); }
-        .pet[data-mood="thinking"] img { animation:buddy-think 1s ease-in-out infinite alternate; }
-        .pet[data-mood="concerned"] img { filter:saturate(.82); }
-        .pet[data-mood="concerned"]::after { border-color:#f2dba8; color:#795b1c; }
-        .pet[data-mood="wave"] img { animation:buddy-wave .65s ease-in-out 2; }
+        .pet[data-mood="idle"] img { filter:saturate(1.1); }
+        .pet[data-mood="pause"]::after { border-color:#f2dba8; color:#795b1c; }
         .pet::after { grid-row:2; content:attr(data-label); align-self:start; padding:4px 10px; border:1px solid #e2eee1; border-radius:999px; background:#fffdf8; color:#285747; font:700 11px/1.2 system-ui,sans-serif; box-shadow:0 3px 12px #173d3820; white-space:nowrap; }
         .pet:focus-visible,.close:focus-visible,.action:focus-visible { outline:3px solid #70c7a4; outline-offset:3px; }
         @keyframes buddy-bob { 0%,100% { transform:translateY(1px); } 50% { transform:translateY(-4px); } }
-        @keyframes buddy-think { from { transform:rotate(-5deg) translateY(2px); } to { transform:rotate(5deg) translateY(-2px); } }
-        @keyframes buddy-wave { 0%,100% { transform:rotate(0); } 25% { transform:rotate(-10deg) translateY(-3px); } 75% { transform:rotate(10deg) translateY(-3px); } }
         @media (prefers-reduced-motion: reduce) { .pet,.pet img { animation:none !important; transition:none; } }
         .panel { position:absolute; right:0; bottom:112px; width:min(292px,calc(100vw - 28px)); padding:16px; border:1px solid #e5e9e2; border-radius:20px; background:#fffdf8; color:#183a3c; box-shadow:0 14px 48px #102a2b35; }
         .panel[hidden] { display:none !important; }
@@ -58,7 +59,7 @@
         .action.secondary { background:#edf3ef; color:#254840; }
         .close { position:absolute; top:8px; right:9px; width:27px; height:27px; border:0; border-radius:50%; background:transparent; color:#637175; font:20px system-ui,sans-serif; cursor:pointer; }
       </style>
-      <button class="pet" id="buddyToggle" data-mood="happy" data-label="Sprout" aria-label="Sprout pet: open helper" aria-expanded="false"><img alt=""></button>
+      <button class="pet" id="buddyToggle" data-mood="idle" data-label="Sprout" aria-label="Sprout pet: open helper" aria-expanded="false"><img alt=""></button>
       <section class="panel" id="buddyPanel" role="dialog" aria-label="Sprout helper" hidden>
         <button class="close" id="buddyClose" aria-label="Close Sprout helper">×</button>
         <div class="panel-head"><img class="mini-pet" alt=""><h2 class="panel-title" id="buddyTitle"></h2></div>
@@ -68,7 +69,7 @@
           <button class="action secondary" id="buddyBack">Go back to videos</button>
         </div>
       </section>`;
-    const mascotUrl = chrome.runtime.getURL("assets/sprout-mascot-512.png");
+    const mascotUrl = chrome.runtime.getURL(buddySprites.idle);
     buddyShadow.querySelectorAll("img").forEach((img) => { img.src = mascotUrl; });
     document.documentElement.appendChild(buddyHost);
     const toggle = buddyShadow.getElementById("buddyToggle");
@@ -77,7 +78,7 @@
       buddyPanelOpen = !buddyPanelOpen;
       panel.hidden = !buddyPanelOpen;
       toggle.setAttribute("aria-expanded", String(buddyPanelOpen));
-      if (buddyPanelOpen) setBuddyMood("wave", "Hi!");
+      if (buddyPanelOpen && !pauseStatuses.has(lastStatus)) setBuddyMood("greeting", "Hi!");
       else updateBuddyMood();
     });
     buddyShadow.getElementById("buddyClose").addEventListener("click", closeBuddyPanel);
@@ -99,18 +100,20 @@
     pet.dataset.mood = mood;
     pet.dataset.label = label;
     pet.setAttribute("aria-label", `Sprout pet, ${label}: open helper`);
+    const spriteUrl = chrome.runtime.getURL(buddySprites[mood] || buddySprites.idle);
+    buddyShadow.querySelectorAll(".pet img, .mini-pet").forEach((image) => { image.src = spriteUrl; });
   }
 
   function updateBuddyMood() {
     if (lastStatus === "connecting" || lastStatus === "checking") setBuddyMood("thinking", "Hmm…");
-    else if (pauseStatuses.has(lastStatus)) setBuddyMood("concerned", "Pause");
-    else if (buddyPanelOpen) setBuddyMood("wave", "Hi!");
-    else setBuddyMood("happy", "Sprout");
+    else if (pauseStatuses.has(lastStatus)) setBuddyMood("pause", "Pause");
+    else if (buddyPanelOpen) setBuddyMood("greeting", "Hi!");
+    else setBuddyMood("idle", "Sprout");
   }
 
   function updateBuddy(status, decision = {}) {
     ensureBuddy();
-    if (status === "off" || pauseStatuses.has(status)) {
+    if (status === "off") {
       buddyHost.hidden = true;
       closeBuddyPanel();
       return;
@@ -119,13 +122,17 @@
     updateBuddyMood();
     const copy = status === "safe"
       ? { title: "This video is ready", detail: decision.preview ? "Sample state only. Sprout hasn’t checked this video yet." : "This video passed your family’s check." }
+      : status === "connecting"
+        ? { title: "Sprout is checking", detail: "I’m checking this video. Ask your grown-up if you need help." }
+      : status === "review" || status === "blocked"
+        ? { title: "Let’s pause and ask", detail: "Your grown-up can help decide what to watch next." }
       : status === "no_video"
         ? { title: "Hi, I’m Sprout!", detail: "I’m here to help your family choose videos. Open a video to check its Sprout status." }
         : { title: "I’m Sprout!", detail: "I’m here to help your family choose videos." };
     buddyShadow.getElementById("buddyTitle").textContent = copy.title;
     buddyShadow.getElementById("buddyDetail").textContent = copy.detail;
-    buddyShadow.getElementById("buddyAsk").hidden = status !== "safe";
-    buddyShadow.getElementById("buddyBack").hidden = status !== "safe";
+    buddyShadow.getElementById("buddyAsk").hidden = status !== "safe" && !pauseStatuses.has(status);
+    buddyShadow.getElementById("buddyBack").hidden = status !== "safe" && !pauseStatuses.has(status);
     buddyShadow.getElementById("buddyAsk").textContent = "Ask a grown-up";
   }
 
@@ -135,7 +142,7 @@
     if (button) {
       button.textContent = "Please get your grown-up";
       button.disabled = true;
-      setBuddyMood("concerned", "Ask a grown-up");
+      setBuddyMood("pause", "Ask a grown-up");
     }
   }
 
@@ -245,7 +252,7 @@
     surface.innerHTML = `
       <section class="scrim" role="dialog" aria-modal="true" aria-labelledby="sprout-title" aria-describedby="sprout-detail">
         <div class="card">
-          <img class="mascot" src="${chrome.runtime.getURL("assets/sprout-mascot-512.png")}" alt="" aria-hidden="true">
+          <img class="mascot" src="${chrome.runtime.getURL(buddySprites.pause)}" alt="" aria-hidden="true">
           <div class="brand"><span class="mark">✳</span> Sprout family mode</div>
           <h2 id="sprout-title">${state.title}</h2>
           <p id="sprout-detail">${state.detail}</p>
