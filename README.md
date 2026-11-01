@@ -4,6 +4,12 @@ The goal is to create a Chrome extension that acts as a content safety filter fo
 
 We need to use the OpenAI stack to implement this, including the Decisions API for filtering, Codex for building this, etc.
 
+## Shared test video
+
+Use [this YouTube test video](https://youtu.be/XnWESGXnGwY) for the team's extension and content-classification experiments. Video ID: `XnWESGXnGwY`.
+
+See [experiment setup and run instructions](experiments/README.md) for the frame-sampling and Decisions API pipeline on this branch.
+
 ## Dividing Responsibilities
 
 ### Product
