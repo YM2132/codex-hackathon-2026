@@ -19,7 +19,7 @@
     <section id="setupView" class="setup-view" hidden>
       <div class="welcome-art"><img src="assets/pawse-idle-cutout.png" alt=""></div>
       <h1>Pause. Ask a grown-up.</h1>
-      <p class="intro">A little help for YouTube.</p>
+        <p class="intro">Pawse helps keep your videos kid-friendly.</p>
       <label class="field-label" for="setupAge">Who is watching?</label>
       <select id="setupAge" class="select-control">
         <option value="3-5">Ages 3–5</option>
@@ -47,7 +47,8 @@
           </div>
           <span id="decisionIcon" class="decision-icon" aria-hidden="true">•</span>
         </div>
-        <p id="decisionText" class="decision-copy">Open a video to see its protection status here.</p>
+        <p id="decisionText" class="decision-copy" aria-live="polite" aria-atomic="true">Open a video to see its protection status here.</p>
+        <details class="check-details" id="checkDetails"><summary>What Pawse checks</summary><p id="checkSummary">Demo mode · no service connected</p></details>
         <p id="adultRequestLabel" class="adult-request" hidden>Your child asked for help with this video.</p>
         <span id="previewLabel" class="preview-label" hidden>Preview example · no model result</span>
         <button id="allowOnceButton" class="button button-primary button-wide" hidden>Allow this video once</button>
@@ -71,7 +72,7 @@
         <div class="rules-heading">
           <div>
             <p class="eyebrow">Parent controls</p>
-            <h2 id="rulesTitle">Family content rules</h2>
+        <h2 id="rulesTitle">Pawse promises</h2>
           </div>
           <span class="rules-mark" aria-hidden="true">✎</span>
         </div>
@@ -87,14 +88,21 @@
         <p class="rules-note"><span aria-hidden="true">ⓘ</span> Available when moderation is connected.</p>
       </section>
 
-      <details class="preview-tools">
-        <summary>Preview the experience</summary>
-        <label for="previewSelect">Choose a sample state</label>
-        <select id="previewSelect" class="select-control">
+      <details class="preview-tools" open>
+        <summary>Try Pawse’s states</summary>
+        <p>Demo only · no model check</p>
+        <div class="state-buttons" role="group" aria-label="Preview Pawse states">
+          <button type="button" data-demo-state="off">Ready</button>
+          <button type="button" data-demo-state="safe">All clear</button>
+          <button type="button" data-demo-state="review">Ask a grown-up</button>
+          <button type="button" data-demo-state="blocked">Find another</button>
+        </div>
+        <label class="sr-only" for="previewSelect">Choose a sample state</label>
+        <select id="previewSelect" class="select-control" hidden>
           <option value="off">No sample state</option>
-          <option value="safe">No adult check</option>
-          <option value="review">Adult review</option>
-          <option value="blocked">Paused for profile</option>
+          <option value="safe">All clear</option>
+          <option value="review">Ask a grown-up</option>
+          <option value="blocked">Find another</option>
         </select>
       </details>
 

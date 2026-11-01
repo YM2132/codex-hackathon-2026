@@ -51,13 +51,14 @@
         .mini-pet { width:48px; height:48px; flex:0 0 48px; object-fit:contain; }
         .panel-title { margin:0; color:#17333b; font-size:15px; font-weight:750; line-height:1.25; }
         .panel-detail { margin:0; color:#5d6c70; font-size:12px; line-height:1.5; }
+        .panel-detail[aria-live] { speak:normal; }
         .panel-actions { display:grid; gap:7px; margin-top:13px; }
         .action { min-height:38px; border:0; border-radius:11px; background:#176554; color:white; font:700 12px system-ui,sans-serif; cursor:pointer; }
         .action.secondary { background:#edf3ef; color:#254840; }
         .close { position:absolute; top:8px; right:9px; width:27px; height:27px; border:0; border-radius:50%; background:transparent; color:#637175; font:20px system-ui,sans-serif; cursor:pointer; }
       </style>
       <button class="pet" id="buddyToggle" data-mood="idle" aria-label="Open Pawse helper" aria-expanded="false"><img alt=""></button>
-      <section class="panel" id="buddyPanel" role="dialog" aria-label="Pawse helper" hidden>
+      <section class="panel" id="buddyPanel" role="dialog" aria-label="Pawse helper" aria-live="polite" hidden>
         <button class="close" id="buddyClose" aria-label="Close Pawse helper">×</button>
         <div class="panel-head"><img class="mini-pet" alt=""><h2 class="panel-title" id="buddyTitle"></h2></div>
         <p class="panel-detail" id="buddyDetail"></p>
@@ -117,11 +118,11 @@
     buddyHost.hidden = false;
     updateBuddyMood();
     const copy = status === "safe"
-      ? { title: "Looks good", detail: decision.preview ? "Preview only." : "Ready for this profile." }
+      ? { title: "All clear!", detail: decision.preview ? "Just a demo." : "You’re good to go." }
       : status === "connecting"
-        ? { title: "Pawse can’t check yet", detail: "Ask a grown-up first." }
+        ? { title: "Pawse needs a grown-up", detail: "Let’s ask them to help us check." }
       : status === "review" || status === "blocked"
-        ? { title: "Let’s pause here", detail: "Ask your grown-up to review." }
+        ? { title: "Pawse found a bump", detail: "Please ask a grown-up to help." }
       : status === "no_video"
         ? { title: "Hi, I’m Pawse.", detail: "Open a video to check it." }
         : { title: "Hi, I’m Pawse.", detail: "Here to help." };
@@ -216,16 +217,16 @@
     pauseVideo();
     const states = {
       connecting: {
-        title: "Ask a grown-up to check",
-        detail: "Pawse can’t check this video yet."
+        title: "Pawse needs a grown-up",
+        detail: "Let’s ask them to help us check."
       },
       review: {
-        title: "Let’s check this video",
-        detail: "Ask your grown-up before watching."
+        title: "Pawse found a bump",
+        detail: "Please ask a grown-up to help."
       },
       blocked: {
-        title: "Pick another video",
-        detail: "Your profile paused this one."
+        title: "Let’s find another video",
+        detail: "Pawse is looking out for you."
       }
     };
     const state = states[status] || states.review;
@@ -265,7 +266,7 @@
     if (id === currentVideoId && lastStatus) return;
     currentVideoId = id;
     lastStatus = "checking";
-    render({ status: "connecting" });
+    render({ status: "checking" });
     try {
       const result = await chrome.runtime.sendMessage({ type: "get_decision", videoId: id });
       if (id === videoIdFromUrl()) render(result);

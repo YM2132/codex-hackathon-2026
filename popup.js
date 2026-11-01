@@ -56,10 +56,11 @@ function describeDecision(decision, settings, video) {
   if (!video.isYoutube) return { title: "Open YouTube", text: "Pawse works on YouTube.", icon: "↗", kind: "" };
   if (!video.id) return { title: "Choose a video", text: "Open a YouTube video to check it.", icon: "•", kind: "" };
   if (!settings.protectionOn) return { title: "Protection is off", text: "Turn it on to check videos.", icon: "○", kind: "" };
-  if (decision.status === "safe") return { title: "Looks okay", text: decision.preview ? "Preview only · no model result." : "Ready for this profile.", icon: "✓", kind: "good" };
-  if (decision.status === "review") return { title: "Ask a grown-up", text: "Playback is paused.", icon: "!", kind: "review" };
-  if (decision.status === "blocked") return { title: "Paused for this profile", text: "Choose another video.", icon: "Ⅱ", kind: "blocked" };
-  if (decision.status === "connecting") return { title: "Pawse can’t check yet", text: "Ask a grown-up before watching.", icon: "?", kind: "review" };
+  if (decision.status === "safe") return { title: "Pawse says: all clear!", text: decision.preview ? "Just a demo · not a real check." : "You’re good to go.", icon: "✓", kind: "good" };
+  if (decision.status === "review") return { title: "Pawse found a bump", text: "Please ask a grown-up to help.", icon: "!", kind: "review" };
+  if (decision.status === "blocked") return { title: "Pawse found a bump", text: "Let’s pick another video together.", icon: "Ⅱ", kind: "blocked" };
+  if (decision.status === "checking") return { title: "Checking…", text: "Wait for Pawse to finish.", icon: "…", kind: "review" };
+  if (decision.status === "connecting") return { title: "Pawse needs a grown-up", text: "Let’s ask them to help us check.", icon: "?", kind: "review" };
   if (decision.status === "allowed_once") return { title: "Allowed once", text: "For this session only.", icon: "✓", kind: "good" };
   return { title: "Not connected", text: "Moderation service unavailable.", icon: "…", kind: "" };
 }
@@ -122,6 +123,9 @@ async function render() {
   $("profileTitle").textContent = AGE_LABELS[settings.ageBand] || AGE_LABELS["3-5"];
   $("ageSelect").value = settings.ageBand;
   $("previewSelect").value = settings.previewScenario;
+  document.querySelectorAll("[data-demo-state]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.demoState === settings.previewScenario));
+  });
   renderRules(Array.isArray(settings.customRules) ? settings.customRules : []);
   $("protectionToggle").setAttribute("aria-checked", String(settings.protectionOn));
   $("protectionHint").classList.toggle("on", settings.protectionOn);
@@ -132,8 +136,14 @@ async function render() {
   $("decisionText").textContent = status.text;
   $("decisionIcon").textContent = status.icon;
   $("decisionIcon").className = "decision-icon " + status.kind;
+  $("checkSummary").textContent = decision.preview
+    ? "Demo state · no model result"
+    : decision.status === "safe" || decision.status === "review" || decision.status === "blocked"
+      ? `Checked ${decision.inputs?.join(", ") || "video metadata"}${decision.latencyMs ? ` · ${decision.latencyMs} ms` : ""}`
+      : "Demo mode · no moderation service connected";
   $("previewLabel").hidden = !decision.preview;
   $("adultRequestLabel").hidden = !adultRequest.requested;
+  $("adultRequestLabel").textContent = adultRequest.requested ? "🐾 Pawse let your grown-up know." : "";
   $("allowOnceButton").hidden = !["review", "blocked", "connecting"].includes(decision.status) || !video.id;
   $("backButton").hidden = !["review", "blocked", "connecting"].includes(decision.status) || !video.id;
 }
@@ -161,6 +171,14 @@ $("ageSelect").addEventListener("change", async (event) => {
 $("previewSelect").addEventListener("change", async (event) => {
   await saveSettings({ previewScenario: event.target.value });
   refreshTab(); render();
+});
+
+document.querySelectorAll("[data-demo-state]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    await saveSettings({ previewScenario: button.dataset.demoState });
+    refreshTab();
+    render();
+  });
 });
 
 $("ruleInput").addEventListener("input", (event) => {
