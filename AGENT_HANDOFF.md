@@ -1,10 +1,10 @@
 # Pawse integration handoff
 
-Updated 2026-11-01. Implementation baseline: `17408c2` on **`feat/unified-sprout-extension`**. This document describes the integrated code, not a future architecture proposal.
+Updated 2026-11-01. Implementation baseline: **`feat/multisite-pawse`** (multi-site work on top of `2bfae13` from `feat/unified-sprout-extension`). This document describes the integrated code, not a future architecture proposal.
 
 ## Start here
 
-The unified extension already combines Raja’s latest Pawse UI, Danyal’s buffered-media capture, and the Decisions experiment. **Standard `https://www.youtube.com/watch?v=...` pages are supported for testing, not just the demo ID.** Other websites, Shorts, and native YouTube apps are not supported by the current controller.
+The unified extension combines Raja’s latest Pawse UI, Danyal’s buffered-media capture, and the Decisions experiment. **Supported sites: YouTube watch pages, YouTube Kids, TikTok, Instagram, X, Reddit, Snapchat and Dailymotion** (site adapters in `sites.js`). Other websites, YouTube Shorts and native apps are not supported; Facebook and Twitch were tested and fail because their MediaSource runs in a worker.
 
 ```sh
 git fetch origin
@@ -15,7 +15,7 @@ uv sync
 uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000
 ```
 
-Load the **repository root** through Chrome → `chrome://extensions` → Developer mode → Load unpacked. Do not load `lookahead/extension` alongside it: that is the older capture-only experiment. Open Pawse, complete setup, enable protection, and select **Ready / No sample state** for live calls. Reload YouTube after installing or updating; the capture hook needs to run before the player creates its media buffers. Press Play if browser autoplay or the YouTube consent dialog holds playback.
+Load the **repository root** through Chrome → `chrome://extensions` → Developer mode → Load unpacked. Do not load `lookahead/extension` alongside it: that is the older capture-only experiment. Open Pawse, complete setup, enable protection, and select **Ready / No sample state** for live calls. Reload open video tabs after installing or updating; the capture hook needs to run before the player creates its media buffers. Press Play if browser autoplay or the YouTube consent dialog holds playback.
 
 `GET http://127.0.0.1:8000/health` reports whether a key is configured; it does not verify the key’s validity or API access. Each teammate needs their own backend process and configured key. Python ≥3.11 and uv are needed for the backend; Node, npm, ffmpeg and a suitable Chrome executable are also needed for the browser harness. The extension’s runtime does not invoke ffmpeg or yt-dlp.
 
@@ -27,6 +27,8 @@ Load the **repository root** through Chrome → `chrome://extensions` → Develo
 | `lookahead-preview` | Danyal’s MediaSource capture through `ae8eb2b`, plus integration fixes |
 | `feat/youtube-protection-extension` | Raja’s Pawse dog UI, sprites and preview states through `143298f` |
 | `feat/unified-sprout-extension` | Working integration; `5dab10e` wires the pipeline, `17408c2` merges Pawse and removes the temporary demo restriction |
+| `lookahead-preview` (later commits) | Multi-site capture: video↔MediaSource mapping, shadow-DOM players, DRM/worker detection, plain-file decoder, site allowlist, cross-site harness |
+| `feat/multisite-pawse` | This branch: merges the above into Pawse and adds `sites.js` adapters for all supported sites |
 
 Start further integration from this branch. If your working branch has additional changes, commit them first and merge `origin/feat/unified-sprout-extension`; resolve conflicts deliberately. Do not replace the integrated files wholesale with earlier UI or capture versions. Do not cherry-pick a merge commit without understanding which parent you need. Keep the existing branch history and teammate changes.
 
@@ -35,8 +37,8 @@ Likely conflict hotspots: `manifest.json`, `content.js`, `popup.*`, `README.md`,
 ## Code map and data flow
 
 ```text
-YouTube MediaSource bytes
-  → page-hook.js (MAIN world): separate decoder, future JPEG frames
+Site MediaSource bytes (or a plain video file URL)
+  → page-hook.js (MAIN world): separate decoder, future JPEG frames; announces the watched <video>
   → engine.js (isolated world): sample and schedule windows
   → service-worker.js: attach current parent settings, call local backend
   → backend/app.py: one Decisions request per window
@@ -46,11 +48,12 @@ YouTube MediaSource bytes
 
 | File | Integration responsibility |
 | --- | --- |
-| `manifest.json` | MV3 entry point; MAIN hook at `document_start`; isolated scripts ordered `guard.js`, `engine.js`, `content.js`; local backend host permission; Pawse assets |
-| `lookahead/extension/page-hook.js` | Copies encoded chunks; tracks media URLs and `SourceBuffer.changeType`; replays into a separate decoder; window-message bridge |
+| `manifest.json` | MV3 entry point; MAIN hook at `document_start` on each supported site; isolated scripts ordered `sites.js`, `guard.js`, `engine.js`, `content.js`; separate `all_frames` entries for `geo.dailymotion.com`; local backend host permission; Pawse assets |
+| `sites.js` | `SproutSites`: per-site hosts, URL → video key, player/ad hooks, home URL; shared key validator. Loaded by content scripts, `importScripts` in the worker, the popup and Node tests |
+| `lookahead/extension/page-hook.js` | Copies encoded chunks; maps each `<video>` to its MediaSource (incl. shadow DOM); tracks `SourceBuffer.changeType` per chunk; classifies source (`mse`, `progressive`, `drm`, `worker-mse`); replays into a separate decoder; window-message bridge |
 | `guard.js` | URL eligibility and pure timeline policy; exports `SproutGuard` despite the UI rebrand |
-| `engine.js` | Exports `SproutEngine`; captures windows, calls worker, discards stale generations, pauses/blurs and resumes when appropriate |
-| `content.js` | Pawse dog states and overlay, YouTube navigation hooks, engine lifecycle, parent-help actions |
+| `engine.js` | Exports `SproutEngine`; captures windows, calls worker, discards stale generations, pauses/blurs and resumes when appropriate; on feeds pauses non-watched videos and restarts checks when the watched video changes |
+| `content.js` | Pawse dog states and overlay (inside the YouTube player, or a fixed layer tracking the video elsewhere), navigation hooks, engine lifecycle, parent-help actions |
 | `service-worker.js` | Settings, HTTP relay, latest per-tab decision, session overrides and help requests |
 | `popup.html`, `popup.css`, `popup.js` | Raja’s parent UI and labeled preview controls, live frame/latency summary |
 | `backend/app.py` | FastAPI relay, request validation, model prompt, family-rule predicates and age thresholds |
@@ -63,6 +66,8 @@ Do not rename the internal `SproutGuard` / `SproutEngine` globals in just one fi
 ### Capture bridge
 
 Isolated world posts `{tag: "lookahead-req", id, op, args}` to the page. Supported operations are `summary` and `decodeFuture`. The reply is `{tag: "lookahead-res", id, result, error}`. `decodeFuture` takes `{times, maxWidth: 512, quality: 0.75}` and returns `frames` with `requested`, `decodedAt`, `jpeg`, or a per-frame `error`. The engine requires every requested frame and checks decoded timestamps before calling the backend.
+
+`summary().player.kind` reports the watched video's source: `mse`, `progressive` (plain file; decoded by a second CORS-mode `<video>`), `drm`, `worker-mse`, `stream`. The engine holds playback with an explanation for anything it cannot decode. The hook also dispatches a composed `pawse-main-video` event on the watched `<video>` every 250 ms; `engine.js` uses it to reach players inside open shadow roots (Reddit).
 
 **Keep codec-change tracking.** YouTube can create a VP9/WebM SourceBuffer and change it to AV1/MP4 before appending. Replaying using only the initial MIME type caused real capture failures. Also preserve current-media URL mapping, native decoder calls that avoid recapturing our own bytes, and decoder cleanup. Capture must not seek the original player.
 
@@ -78,6 +83,8 @@ Isolated world posts `{tag: "lookahead-req", id, op, args}` to the page. Support
 | `request_adult_review`, `get_adult_request`, `clear_adult_request` | Video-specific help request and toolbar badge |
 | `allow_once` | `{videoId, tabId}`; explicit parent override for that video for the browser session |
 | `back_to_results` | `{tabId}`; asks the content script to navigate back |
+
+`allow_once` for a feed page key (`<site>:page-…`) is not stored in `allowedVideoIds`; the content script allows only the video playing at the time and resumes checks when the source changes. `get_decision` from the popup returns the tab’s latest decision even if its key differs from the URL-derived one (Dailymotion’s embedded player).
 
 Settings use `chrome.storage.sync`. Latest decisions, help requests, and allowed video IDs use `chrome.storage.session`. Checked windows live in the content controller’s memory; there is no persistent classification database. Settings changes clear overrides and invalidate checked windows. An override is keyed by video ID, not exclusively by tab.
 
@@ -100,7 +107,7 @@ Settings use `chrome.storage.sync`. Latest decisions, help requests, and allowed
 }
 ```
 
-Video ID must be 11 URL-safe characters. Windows span at most 3.01 seconds. Frames must be ordered, unique, inside the window, and cover it with gaps no larger than 1.11 seconds, including the edges. The relay accepts 1–5 frames, JPEG data URLs up to 500,000 characters each, and up to ten nonempty rules of at most 280 characters. These are **application limits, not documented OpenAI API limits**.
+`videoId` is a **video key**: an 11-character YouTube/YouTube Kids ID, or `<site>:<id>` (`[a-z]{1,16}:[A-Za-z0-9_.-]{1,80}`) such as `tiktok:7675478347278863629`; feeds without a per-video URL use `<site>:page-<hash>`. The same pattern is in `sites.js` (`SproutSites.KEY`) and `backend/app.py` (`VIDEO_KEY`); change both together. Windows span at most 3.01 seconds. Frames must be ordered, unique, inside the window, and cover it with gaps no larger than 1.11 seconds, including the edges. The relay accepts 1–5 frames, JPEG data URLs up to 500,000 characters each, and up to ten nonempty rules of at most 280 characters. These are **application limits, not documented OpenAI API limits**.
 
 The response includes `videoId`, `start`, `end`, `status` (`safe`, `review`, `blocked`), `category`, `probability`, `threshold`, `probabilities`, `frameCount`, `apiSeconds`, `model`, `preview:false`, `provenance:"live"`, and `audioAnalyzed:false`. The engine checks identity, bounds, status and provenance before storing the result.
 
@@ -122,15 +129,17 @@ Preview modes `safe`, `review`, and `blocked` are scripted, visibly labeled, and
 
 ```sh
 uv run python -m unittest discover -s tests
-node --test tests/guard.test.cjs
+node --test tests/guard.test.cjs tests/sites.test.cjs
 npm ci --prefix lookahead/harness
 # Stop the real backend first: this harness supplies its own relay on port 8000.
 node lookahead/harness/run-unified.mjs
+# Real sites (YouTube, TikTok, Snapchat by default) with the same kind of stub relay:
+node lookahead/harness/run-multisite.mjs
 # Restart the real backend before an optional live test (incurs API usage):
 node lookahead/harness/run-unified-live.mjs XnWESGXnGwY
 ```
 
-At baseline, **14 Python tests and 4 Node tests passed**. The real-Chrome deterministic harness uses synthetic media at a non-demo YouTube ID, including a SourceBuffer codec switch. It verified frame transmission with parent settings, pause at 5.49 seconds before a flagged 6-second boundary, seeking into unchecked content, backend failure holding playback, and parent override releasing it. Its relay is mocked; this is not an accuracy benchmark.
+On `feat/multisite-pawse`, **14 Python tests and 8 Node tests pass**, `run-unified.mjs` passes all four checks, and `run-multisite.mjs` passed on real YouTube, TikTok (`tiktok:<id>`, MSE) and Snapchat Spotlight (plain-file decoder, CORS-readable): each sent complete 3-frame windows with the right key and resumed playback. Instagram, X, Reddit, YouTube Kids and Dailymotion were verified with the capture-only preview in a real logged-in Chrome (see `lookahead/README.md`), not yet through the full Pawse pipeline. The real-Chrome deterministic harness uses synthetic media at a non-demo YouTube ID, including a SourceBuffer codec switch. It verified frame transmission with parent settings, pause at 5.49 seconds before a flagged 6-second boundary, seeking into unchecked content, backend failure holding playback, and parent override releasing it. Its relay is mocked; this is not an accuracy benchmark.
 
 A separate live test before the latest UI merge used the shared YouTube video and real Decisions: playback paused at 5.41 seconds before the 6–9 second window, with violence probability 0.68 and adult-review status for ages 6–8. This is one observed run, not a promised detection timestamp or repeatable score. Re-run the live harness after relevant capture/model changes.
 
@@ -140,7 +149,8 @@ Harness output is under ignored `artifacts/unified-browser-test/` and `artifacts
 
 ## Known gaps and next integration work
 
-- Standard YouTube watch pages only. Supporting other sites requires URL/player adapters, capture compatibility work, and appropriate manifest changes—not simply adding broad host permissions.
+- Supported sites are listed in `sites.js` and `manifest.json`; add a site by writing an adapter, adding explicit matches, and testing capture first—not by adding broad host permissions. Facebook and Twitch need worker-MediaSource capture. Instagram, X, Reddit, YouTube Kids and Dailymotion still need a full-pipeline run with the real backend.
+- Feeds: on page-key feeds, decisions are per video source but the key is per page; Dailymotion only buffers ~3 s ahead, so checks there often hold playback briefly.
 - Visual samples can miss brief events; there is no audio/transcript classification, recommendation filtering, persistent verdict cache, or video-wide safety guarantee.
 - Ads, worker-based MediaSource, DRM, live streams and unavailable buffers can leave playback held. Long videos and codec/quality changes need more testing. The decoder currently replays captured chunks per window, which can get expensive.
 - The MAIN-world message bridge trusts the page environment. It is not hardened against a hostile page forging frame responses. The playback guard is best effort, not a security boundary; background throttling and high playback speeds need additional validation.

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Pawse — YouTube family mode",
-  "version": "0.3.0",
-  "description": "Pawse checks buffered YouTube frames ahead of playback with OpenAI Decisions.",
+  "name": "Pawse — family mode for kids' video sites",
+  "version": "0.4.0",
+  "description": "Pawse checks buffered video frames ahead of playback with OpenAI Decisions on YouTube, YouTube Kids, TikTok, Instagram, X, Reddit, Snapchat and Dailymotion.",
   "icons": {
     "16": "assets/icons/pawse-16.png",
     "32": "assets/icons/pawse-32.png",
@@ -33,7 +33,13 @@
   "content_scripts": [
     {
       "matches": [
-        "https://www.youtube.com/*"
+        "https://www.youtube.com/*",
+        "https://www.youtubekids.com/*",
+        "https://www.tiktok.com/*",
+        "https://www.instagram.com/*",
+        "https://x.com/*",
+        "https://www.reddit.com/*",
+        "https://www.snapchat.com/*"
       ],
       "js": [
         "lookahead/extension/page-hook.js"
@@ -43,14 +49,45 @@
     },
     {
       "matches": [
-        "https://www.youtube.com/*"
+        "https://www.youtube.com/*",
+        "https://www.youtubekids.com/*",
+        "https://www.tiktok.com/*",
+        "https://www.instagram.com/*",
+        "https://x.com/*",
+        "https://www.reddit.com/*",
+        "https://www.snapchat.com/*"
       ],
       "js": [
+        "sites.js",
         "guard.js",
         "engine.js",
         "content.js"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://geo.dailymotion.com/*"
+      ],
+      "js": [
+        "lookahead/extension/page-hook.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://geo.dailymotion.com/*"
+      ],
+      "js": [
+        "sites.js",
+        "guard.js",
+        "engine.js",
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
     }
   ],
   "web_accessible_resources": [
@@ -62,7 +99,14 @@
         "assets/pawse-pause-cutout.png"
       ],
       "matches": [
-        "https://www.youtube.com/*"
+        "https://www.youtube.com/*",
+        "https://www.youtubekids.com/*",
+        "https://www.tiktok.com/*",
+        "https://www.instagram.com/*",
+        "https://x.com/*",
+        "https://www.reddit.com/*",
+        "https://www.snapchat.com/*",
+        "https://geo.dailymotion.com/*"
       ]
     }
   ]

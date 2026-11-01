@@ -17,6 +17,9 @@ from experiments.youtube_frames import ENDPOINT, QUESTIONS, ROOT, parse_answers
 load_dotenv(ROOT / ".env")
 
 
+VIDEO_KEY = r"^(?:[A-Za-z0-9_-]{11}|[a-z]{1,16}:[A-Za-z0-9_.-]{1,80})$"
+
+
 class Frame(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     timestamp: float = Field(ge=0)
@@ -35,7 +38,8 @@ class Frame(BaseModel):
 
 class Scan(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
-    videoId: str = Field(pattern=r"^[A-Za-z0-9_-]{11}$")
+    # Bare 11-char YouTube/YouTube Kids ID, or "<site>:<id>" for other supported sites (see sites.js).
+    videoId: str = Field(pattern=VIDEO_KEY)
     start: float = Field(ge=0)
     end: float = Field(gt=0)
     ageBand: Literal["3-5", "6-8", "9-12"] = "3-5"

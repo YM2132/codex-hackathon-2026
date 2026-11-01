@@ -1,3 +1,4 @@
+const SUPPORTED_NAMES = [...new Set(SproutSites.SITES.map((site) => site.name))].join(", ");
 const DEFAULTS = { setupComplete: false, protectionOn: false, ageBand: "3-5", previewScenario: "off", customRules: [] };
 const AGE_LABELS = { "3-5": "Ages 3–5", "6-8": "Ages 6–8", "9-12": "Ages 9–12" };
 const $ = (id) => document.getElementById(id);
@@ -26,18 +27,15 @@ async function saveSettings(patch) {
 }
 
 async function activeVideo() {
-  if (!extensionMode) return { id: "preview-video", tabId: null, isYoutube: true };
+  if (!extensionMode) return { id: "preview-video", tabId: null, isSupported: true, siteName: "YouTube" };
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  if (!tab?.url) return { id: "", tabId: tab?.id, isYoutube: false };
-  try {
-    const url = new URL(tab.url);
-    const id = url.searchParams.get("v") || (url.pathname.startsWith("/shorts/") ? url.pathname.split("/")[2] : "");
-    return { id: id || "", tabId: tab.id, isYoutube: url.hostname.endsWith("youtube.com") };
-  } catch { return { id: "", tabId: tab?.id, isYoutube: false }; }
+  const site = tab?.url ? SproutSites.siteFor(tab.url) : null;
+  if (!site) return { id: "", tabId: tab?.id, isSupported: false, siteName: "" };
+  return { id: SproutSites.videoKey(tab.url), tabId: tab.id, isSupported: true, siteName: site.name };
 }
 
 async function getDecision(video) {
-  if (!video.isYoutube || !video.id) return { status: "none" };
+  if (!video.isSupported || !video.id) return { status: "none" };
   if (!extensionMode) {
     const settings = await getSettings();
     if (!settings.setupComplete || !settings.protectionOn) return { status: "off" };
@@ -53,8 +51,8 @@ async function getDecision(video) {
 }
 
 function describeDecision(decision, settings, video) {
-  if (!video.isYoutube) return { title: "Open YouTube", text: "Pawse works on YouTube.", icon: "↗", kind: "" };
-  if (!video.id) return { title: "Choose a video", text: "Open a YouTube video to check it.", icon: "•", kind: "" };
+  if (!video.isSupported) return { title: "Site not supported", text: `Pawse works on ${SUPPORTED_NAMES}. Videos here are not checked.`, icon: "↗", kind: "" };
+  if (!video.id) return { title: "Choose a video", text: `Open a ${video.siteName} video to check it.`, icon: "•", kind: "" };
   if (!settings.protectionOn) return { title: "Protection is off", text: "Turn it on to check videos.", icon: "○", kind: "" };
   if (decision.status === "safe") return { title: "Pawse says: all clear!", text: decision.preview ? "Just a demo · not a real check." : "Upcoming visual samples checked.", icon: "✓", kind: "good" };
   if (decision.status === "review") return { title: "Pawse found a bump", text: decision.detail || "Please ask a grown-up to help.", icon: "!", kind: "review" };
@@ -113,6 +111,8 @@ async function render() {
   const settings = await getSettings();
   const video = await activeVideo();
   const decision = await getDecision(video);
+  // An embedded player (e.g. Dailymotion) reports its own key; act on what is actually playing.
+  if (extensionMode && decision?.videoId && SproutSites.isValidKey(decision.videoId)) video.id = decision.videoId;
   const adultRequest = extensionMode && video.id
     ? await chrome.runtime.sendMessage({ type: "get_adult_request", videoId: video.id }).catch(() => ({ requested: false }))
     : { requested: false };
@@ -129,7 +129,7 @@ async function render() {
   renderRules(Array.isArray(settings.customRules) ? settings.customRules : []);
   $("protectionToggle").setAttribute("aria-checked", String(settings.protectionOn));
   $("protectionHint").classList.toggle("on", settings.protectionOn);
-  $("protectionHint").lastElementChild.textContent = settings.protectionOn ? "Protection is on for YouTube" : "Protection is off";
+  $("protectionHint").lastElementChild.textContent = settings.protectionOn ? "Protection is on for supported sites" : "Protection is off";
 
   const status = describeDecision(decision, settings, video);
   $("videoTitle").textContent = status.title;
@@ -227,7 +227,7 @@ $("backButton").addEventListener("click", async () => {
     if (video.id) await chrome.runtime.sendMessage({ type: "clear_adult_request", videoId: video.id, tabId: video.tabId });
     await chrome.runtime.sendMessage({ type: "back_to_results", tabId: video.tabId });
   }
-  else toast("In the extension, this returns to YouTube results.");
+  else toast("In the extension, this goes back to the previous page.");
 });
 
 function showHelp() { $("helpDialog").showModal(); }

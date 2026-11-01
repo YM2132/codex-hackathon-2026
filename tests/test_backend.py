@@ -21,7 +21,10 @@ class BackendTests(unittest.TestCase):
     def test_other_youtube_video_ids_are_accepted(self):
         for video_id in ["aqz-KE-bpKQ", "wiiFgsDJ8xk"]:
             self.assertEqual(Scan(**{**payload(), "videoId": video_id}).videoId, video_id)
-        for video_id in ["bad", "https://www.youtube.com/watch?v=XnWESGXnGwY", "../private"]:
+        for video_id in ["tiktok:7675478347278863629", "instagram:DfF3eqGSKKc", "reddit:page-1x2y3z"]:
+            self.assertEqual(Scan(**{**payload(), "videoId": video_id}).videoId, video_id)
+        for video_id in ["bad", "https://www.youtube.com/watch?v=XnWESGXnGwY", "../private",
+                         "tiktok:", "TikTok:123", "x:12/34", "reddit:../etc"]:
             with self.assertRaises(ValueError):
                 Scan(**{**payload(), "videoId": video_id})
 

@@ -13,12 +13,28 @@
   function capture(op, args) {
     return new Promise((resolve, reject) => {
       const id = `sprout-${++sequence}-${crypto.randomUUID()}`;
-      const timer = setTimeout(() => { pending.delete(id); reject(new Error("Frame capture timed out. Reload the YouTube tab.")); }, 15000);
+      const timer = setTimeout(() => { pending.delete(id); reject(new Error("Frame capture timed out. Reload the tab.")); }, 15000);
       pending.set(id, {resolve, reject, timer});
       window.postMessage({tag: "lookahead-req", id, op, args}, location.origin);
     });
   }
-  const mainVideo = () => document.querySelector("#movie_player video") || document.querySelector("video");
+  // page-hook.js (MAIN world) announces the watched <video> with a composed event, which also
+  // reaches us from inside open shadow roots (e.g. Reddit's player).
+  let announced = null;
+  document.addEventListener("pawse-main-video", event => {
+    const target = event.composedPath()[0];
+    if (target instanceof HTMLVideoElement) announced = target;
+  }, true);
+  const site = () => SproutSites.siteFor(location.href);
+  const mainVideo = () => (announced?.isConnected && announced)
+    || site()?.player?.()?.querySelector("video") || document.querySelector("video");
+  const isAd = () => !!site()?.ad?.();
+  const UNSUPPORTED = {
+    "worker-mse": "This player’s video buffer is unavailable. Ask a grown-up.",
+    drm: "This video is protected and can’t be checked. Ask a grown-up.",
+    stream: "Live camera or call video can’t be checked ahead. Ask a grown-up.",
+    "blob-unknown": "This player’s video buffer is unavailable. Ask a grown-up."
+  };
   class Engine {
     constructor(render) {
       this.render = render; this.generation = 0; this.windows = new Map(); this.mode = "off";
@@ -26,10 +42,11 @@
       document.addEventListener("seeking", () => this.guard(), true);
       document.addEventListener("play", () => this.guard(), true);
     }
+    video() { return mainVideo(); }
     reset(videoId, mode = "connecting", preview = false) {
       this.generation++; this.videoId = videoId; this.windows.clear(); this.mode = mode;
       this.preview = preview; this.lastKey = ""; this.error = ""; this.retryAt = 0;
-      this.source = null; this.lastReport = 0;
+      this.source = null; this.sourceVideo = null; this.lastReport = 0;
       this.guard();
     }
     emit(decision) {
@@ -45,11 +62,15 @@
       const video = mainVideo();
       if (!video || !this.videoId) return;
       let decision;
+      // Feeds: a new video (element or source) is new content. An "allow once" on a feed page
+      // covers only the video that was playing when the grown-up allowed it.
+      const changed = this.source !== video.currentSrc || this.sourceVideo !== video;
+      if (changed && this.source !== null && this.mode === "allowed_once" && SproutSites.isPageKey(this.videoId)) this.mode = "live";
       if (this.mode !== "live") decision = {status: this.mode};
-      else if (document.querySelector("#movie_player.ad-showing")) decision = {status: "connecting", detail: "Ads need a grown-up’s review."};
+      else if (isAd()) decision = {status: "connecting", detail: "Ads need a grown-up’s review."};
       else {
-        if (this.source !== video.currentSrc) {
-          this.source = video.currentSrc; this.generation++; this.windows.clear();
+        if (changed) {
+          this.source = video.currentSrc; this.sourceVideo = video; this.generation++; this.windows.clear();
         }
         decision = SproutGuard.evaluate(this.windows, video.currentTime, video.duration);
         if (decision.status === "connecting" && this.error) decision.detail = this.error;
@@ -60,6 +81,11 @@
         if (!video.paused) this.resumeAfterCheck = true;
         video.pause();
       }
+      // Only the checked video may play: pause other autoplaying feed videos.
+      if (this.mode === "live") for (const other of document.querySelectorAll("video")) {
+        if (other !== video && !other.paused && !other.__lookaheadDecoder) other.pause();
+      }
+      if (this.source === null) { this.source = video.currentSrc; this.sourceVideo = video; }
       this.emit(decision);
       if (!hold && this.resumeAfterCheck) {
         this.resumeAfterCheck = false;
@@ -77,7 +103,7 @@
     }
     async scan() {
       const video = mainVideo();
-      if (!video || !Number.isFinite(video.duration) || video.duration <= 0 || document.querySelector("#movie_player.ad-showing")) return;
+      if (!video || !Number.isFinite(video.duration) || video.duration <= 0 || isAd()) return;
       const generation = this.generation;
       const videoId = this.videoId;
       const index = Math.floor(video.currentTime / SproutGuard.WINDOW);
@@ -89,11 +115,11 @@
       this.busy = true;
       try {
         const summary = await capture("summary");
-        if (summary.diag.mediaSourceHandleAttached) throw new Error("This player’s video buffer is unavailable. Ask a grown-up.");
+        if (UNSUPPORTED[summary.player?.kind]) throw new Error(UNSUPPORTED[summary.player.kind]);
         const times = [];
         for (let t = start; t < end; t += 1) times.push(Math.min(t + .1, (t + end) / 2));
         if (!times.every(t => summary.player.buffered?.some(([s, e]) => t >= s && t < e - .02))) {
-          this.error = "Waiting for YouTube to buffer the next few seconds…";
+          this.error = "Waiting for the video to buffer the next few seconds…";
           this.retryAt = Date.now() + 600; return;
         }
         const decoded = await capture("decodeFuture", {times, maxWidth: 512, quality: .75});

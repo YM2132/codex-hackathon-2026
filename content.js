@@ -20,11 +20,23 @@
     pause: "assets/pawse-pause-cutout.png"
   };
 
-  function videoIdFromUrl() { return SproutGuard.videoIdFromUrl(location.href); }
+  const site = () => SproutSites.siteFor(location.href);
+  function videoIdFromUrl() { return SproutSites.videoKey(location.href); }
 
+  // YouTube-style players get the overlay inside the player element. Elsewhere the overlay is a
+  // fixed layer kept over the watched video's on-screen box (see trackOverlay).
   function player() {
-    return document.querySelector("#movie_player") || document.querySelector(".html5-video-player");
+    return site()?.player?.() || null;
   }
+  function trackOverlay() {
+    if (!root?.isConnected || root.parentElement !== document.documentElement) return;
+    const video = engine.video();
+    const r = video?.getBoundingClientRect();
+    if (!r || r.width < 2) { root.style.display = "none"; return; }
+    Object.assign(root.style, {position: "fixed", inset: "auto", left: `${r.left}px`, top: `${r.top}px`,
+      width: `${r.width}px`, height: `${r.height}px`, display: "block", zIndex: "2147482000"});
+  }
+  setInterval(trackOverlay, 200);
 
   function ensureBuddy() {
     if (buddyHost?.isConnected) return;
@@ -141,7 +153,7 @@
   }
 
   function ensureOverlay() {
-    const host = player();
+    const host = player() || (engine.video() ? document.documentElement : null);
     if (!host) return false;
     if (root?.isConnected && root.parentElement === host) return true;
     root?.remove();
@@ -173,16 +185,17 @@
       </style>
       <div id="surface"></div>`;
     host.appendChild(root);
+    trackOverlay();
     return true;
   }
 
   function pauseVideo() {
-    document.querySelector("video")?.pause();
+    (engine.video() || document.querySelector("video"))?.pause();
   }
 
   function goBack() {
     if (history.length > 1) history.back();
-    else location.assign("https://www.youtube.com/");
+    else location.assign(site()?.home || "https://www.youtube.com/");
   }
 
   function render(decision) {

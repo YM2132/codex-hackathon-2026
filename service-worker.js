@@ -1,3 +1,5 @@
+importScripts("sites.js");
+
 const DEFAULT_SETTINGS = {
   setupComplete: false,
   protectionOn: false,
@@ -32,8 +34,8 @@ async function settings() {
   return { ...DEFAULT_SETTINGS, ...saved };
 }
 
-async function decide(videoId, tabId) {
-  if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) return {videoId, status: "off", preview: false};
+async function decide(videoId, tabId, fromPopup = false) {
+  if (!SproutSites.isValidKey(videoId)) return {videoId, status: "off", preview: false};
   const prefs = await settings();
   if (!prefs.setupComplete || !prefs.protectionOn) {
     return { videoId, status: "off", preview: false };
@@ -50,7 +52,8 @@ async function decide(videoId, tabId) {
 
   const saved = await chrome.storage.session.get(`decision:${tabId}`);
   const recent = saved[`decision:${tabId}`];
-  if (recent?.videoId === videoId && Date.now() - recent.updatedAt < 5000) return recent;
+  // The popup derives its key from the tab URL; an embedded player (Dailymotion) reports its own key.
+  if (recent && (recent.videoId === videoId || fromPopup) && Date.now() - recent.updatedAt < 5000) return recent;
   return {
     videoId,
     status: "connecting",
@@ -70,7 +73,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     if (message?.type === "classify_frames") {
-      if (!/^[A-Za-z0-9_-]{11}$/.test(message.scan?.videoId || "")) throw new Error("Invalid YouTube video ID");
+      if (!SproutSites.isValidKey(message.scan?.videoId || "")) throw new Error("Invalid video key");
       const prefs = await settings();
       if (!prefs.setupComplete || !prefs.protectionOn || prefs.previewScenario !== "off") {
         sendResponse({ok: false, error: "Live checks are disabled"}); return;
@@ -95,13 +98,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const prefs = { ...DEFAULT_SETTINGS, ...(message.settings || {}) };
       await chrome.storage.sync.set(prefs);
       await chrome.storage.session.set({ allowedVideoIds: [] });
-      const tabs = await chrome.tabs.query({url: "https://www.youtube.com/*"});
+      // Every supported site, without needing the "tabs" permission: tabs without Pawse ignore it.
+      const tabs = await chrome.tabs.query({});
       await Promise.all(tabs.map(tab => chrome.tabs.sendMessage(tab.id, {type: "refresh_protection"}).catch(() => {})));
       sendResponse(prefs);
       return;
     }
     if (message?.type === "get_decision") {
-      sendResponse(await decide(String(message.videoId || ""), sender.tab?.id ?? message.tabId));
+      sendResponse(await decide(String(message.videoId || ""), sender.tab?.id ?? message.tabId, !sender.tab));
       return;
     }
     if (message?.type === "request_adult_review") {
@@ -136,7 +140,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "allow_once") {
       const videoId = String(message.videoId || "");
       const saved = await chrome.storage.session.get("allowedVideoIds");
-      const allowedVideoIds = [...new Set([...(saved.allowedVideoIds || []), videoId])];
+      // A feed page key would allow every later video on that page, so it is not remembered;
+      // the content script allows only the video currently playing.
+      const allowedVideoIds = SproutSites.isPageKey(videoId)
+        ? (saved.allowedVideoIds || []) : [...new Set([...(saved.allowedVideoIds || []), videoId])];
       await chrome.storage.session.set({ allowedVideoIds });
       const requests = await chrome.storage.session.get("adultRequests");
       const adultRequests = { ...(requests.adultRequests || {}) };
