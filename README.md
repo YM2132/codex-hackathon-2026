@@ -10,7 +10,7 @@ We need to use the OpenAI stack to implement this, including the Decisions API f
 
 1. Designing a child-friendly interface to the Chrome extension, eg. OpenAI Pets for Kids
 2. Ensuring the extension reroutes back to a safe page
-3. Using the models to curate a set of recommended videos for the kid to view
+3. Using the models to detect if what the child is seeing should be blocked via pop-up
 4. Create a demo
 ### Modelling
 
