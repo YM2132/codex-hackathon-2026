@@ -202,7 +202,8 @@
     return { kind: 'none' };
   }
   // The video a viewer is most likely watching: playing > started > largest on screen.
-  function pickVideo() {
+  // Best guess at what the viewer is watching (announced to the controller, so feeds can move on).
+  function scoredPick() {
     let best = null, bestScore = -1;
     for (const v of allVideos()) {
       const r = v.getBoundingClientRect();
@@ -212,6 +213,10 @@
       if (score > bestScore) { best = v; bestScore = score; }
     }
     return best;
+  }
+  // Capture and summaries follow the video the Pawse controller marked as guarded, if any.
+  function pickVideo() {
+    return allVideos().find(v => v.hasAttribute('data-pawse-watched')) || scoredPick();
   }
   const mainVideo = pickVideo;
 
@@ -253,7 +258,7 @@
 
   // Tell the isolated world which element is being watched (crosses open shadow roots).
   setInterval(() => {
-    pickVideo()?.dispatchEvent(new CustomEvent('pawse-main-video', { bubbles: true, composed: true }));
+    scoredPick()?.dispatchEvent(new CustomEvent('pawse-main-video', { bubbles: true, composed: true }));
   }, 250);
 
   function summary() {

@@ -23,7 +23,10 @@ async function getSettings() {
 async function saveSettings(patch) {
   const current = await getSettings();
   const next = { ...current, ...patch };
-  if (extensionMode) await chrome.runtime.sendMessage({ type: "save_settings", settings: next });
+  if (extensionMode) {
+    const saved = await chrome.runtime.sendMessage({ type: "save_settings", settings: next });
+    if (saved?.ok === false) { toast("Enter the parent PIN to change settings."); parentControlsUnlocked = false; return current; }
+  }
   else localStorage.setItem("pawse-preview-settings", JSON.stringify(next));
   return next;
 }
@@ -61,7 +64,7 @@ function describeDecision(decision, settings, video) {
   if (decision.status === "blocked") return { title: "Let’s pause and pick another", text: decision.detail || "Pawse is looking out for you.", icon: "Ⅱ", kind: "blocked" };
   if (decision.status === "checking") return { title: "Checking…", text: "Wait for Pawse to finish.", icon: "…", kind: "review" };
   if (decision.status === "connecting") return { title: "Pawse time!", text: decision.detail || "Let’s ask a grown-up to check this video.", icon: "Ⅱ", kind: "review" };
-  if (decision.status === "allowed_once") return { title: "Allowed once", text: "For this session only.", icon: "✓", kind: "good" };
+  if (decision.status === "allowed_once") return { title: "Grown-up is inspecting", text: "Playing without Pawse checks for this session so you can watch it first.", icon: "👀", kind: "good" };
   return { title: "Not connected", text: "Moderation service unavailable.", icon: "…", kind: "" };
 }
 
@@ -123,7 +126,11 @@ async function render() {
   $("dashboardView").hidden = !settings.setupComplete;
   if (!settings.setupComplete) return;
   $("parentUnlockForm").hidden = parentControlsUnlocked;
-  $("parentUnlockButton").textContent = settings.pinConfigured ? "Unlock controls" : "Set PIN and unlock";
+  if (extensionMode) parentControlsUnlocked = Boolean(settings.unlocked);
+  $("parentUnlockButton").textContent = "Unlock controls";
+  // The on/off switch is a parent control: locked until the PIN is entered.
+  $("protectionToggle").disabled = extensionMode && !parentControlsUnlocked;
+  $("protectionToggle").title = $("protectionToggle").disabled ? "Enter the parent PIN to change this" : "";
   document.querySelectorAll(".parent-control").forEach((section) => { section.hidden = !parentControlsUnlocked; });
 
   $("profileTitle").textContent = AGE_LABELS[settings.ageBand] || AGE_LABELS["3-5"];
@@ -151,9 +158,9 @@ async function render() {
   $("adultRequestLabel").hidden = !adultRequest.requested;
   $("adultRequestLabel").textContent = adultRequest.requested ? "🐾 Pawse let your grown-up know." : "";
   $("allowOnceButton").hidden = !["review", "blocked", "connecting"].includes(decision.status) || !video.id;
-  $("allowOnceButton").textContent = decision.status === "connecting" ? "Ask a grown-up" : "Ask a grown-up to approve";
+  $("allowOnceButton").textContent = "Grown-up: inspect this video";
   $("backButton").hidden = !["review", "blocked", "connecting"].includes(decision.status) || !video.id;
-  $("pinStatus").textContent = settings.pinConfigured ? "PIN set" : "Set a PIN to approve videos.";
+  $("pinStatus").textContent = settings.pinIsDefault ? "Still using the default PIN 1111. Change it so your child can’t guess it." : "PIN set";
 }
 
 $("startButton").addEventListener("click", async () => {
@@ -180,6 +187,7 @@ $("parentUnlockForm").addEventListener("submit", async (event) => {
 
 $("protectionToggle").addEventListener("click", async () => {
   const s = await getSettings();
+  if (extensionMode && !s.unlocked) { toast("Enter the parent PIN first."); return; }
   await saveSettings({ protectionOn: !s.protectionOn });
   refreshTab(); render();
 });
@@ -243,7 +251,7 @@ $("approvalForm").addEventListener("submit", async (event) => {
   if (!result?.ok) { toast("That PIN didn’t work. Try again."); $("approvalPin").select(); return; }
   $("approvalPin").value = "";
   $("approvalForm").hidden = true;
-  toast("Approved for this session.");
+  toast("Unlocked so you can watch and check it. Ends with this session.");
   render();
 });
 

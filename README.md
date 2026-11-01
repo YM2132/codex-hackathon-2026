@@ -21,7 +21,7 @@ Then, in Chrome:
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and select the `codex-hackathon-2026` folder.
-3. Pin Pawse, open it, choose your child's age and set a parent PIN.
+3. Pin Pawse, open it and choose your child's age. **The default parent PIN is `1111`. Change it straight away** under *Parent PIN*.
 4. Reload any video tab that was already open, then play a video.
 
 On Windows, or to run the backend by hand: put `OPENAI_API_KEY=...` in `.env` (see `.env.example`), then run `uv sync` and `uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000`.
@@ -29,10 +29,23 @@ On Windows, or to run the backend by hand: put `OPENAI_API_KEY=...` in `.env` (s
 ## Using Pawse
 
 - **While a video plays:** Pawse checks it in 3-second windows ahead of playback. Checked windows play. Pawse pauses the video before a flagged window and shows the dog with options to ask a grown-up or go back.
-- **Parent popup** (PIN-protected): age band (3–5, 6–8 or 9–12), on/off, plain-language family rules (e.g. "No scary monsters"), and **approve once** for the current video.
+- **Parent popup** (PIN-protected; unlock lasts 10 minutes): age band (3–5, 6–8 or 9–12), on/off, plain-language family rules (e.g. "No scary monsters"), and **inspect this video**, which unlocks the current video for a grown-up to watch and judge (this browser session only). The extension's background worker enforces the PIN, so a child can't switch protection off, change settings or unlock a video without it.
 - **Feeds** (TikTok, Instagram, X, Reddit): only the video being watched plays, and each new video is checked.
 - **Built-in categories:** violence, sexual content, frightening content, dangerous behaviour, substance use, hate, visible profanity. Political and religious content is only blocked if a family rule says so.
 - **Preview states** in the popup demo the UI without sending any frames.
+
+## Keeping it on
+
+Inside Chrome, Pawse can't be switched off without the PIN, and if the backend stops, videos stay paused. A child with access to Chrome's settings can still get around it, though:
+
+- **Removing or disabling the extension** in `chrome://extensions`, or opening an **Incognito** window, where extensions don't run by default.
+- **Using another browser**, or a video site Pawse doesn't support.
+
+To close these gaps, give your child a supervised setup you control:
+- a **separate macOS user** with *Screen Time* limiting apps to Chrome;
+- **Chrome policies** such as `IncognitoModeAvailability=1`, `DeveloperToolsAvailability=2`, and a `URLBlocklist` containing `chrome://extensions`.
+
+On an unmanaged Mac, policies may need a configuration profile; check `chrome://policy` after restarting Chrome.
 
 ## Troubleshooting
 

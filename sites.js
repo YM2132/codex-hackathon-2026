@@ -34,10 +34,11 @@
       videoId: match(/\/spotlight\/([A-Za-z0-9_-]{5,80})/), feeds: true},
     // The Dailymotion video plays inside a geo.dailymotion.com iframe; the top page only hosts it.
     {id: "dailymotion", name: "Dailymotion", hosts: ["www.dailymotion.com"], home: "https://www.dailymotion.com/",
-      videoId: match(/\/video\/(x[a-z0-9]{3,12})/), feeds: true, playerInChildFrame: true},
+      videoId: match(/\/video\/(x[a-z0-9]{3,12})/), feeds: true, playerInChildFrame: true, margin: .6},
     {id: "dailymotion", name: "Dailymotion", hosts: ["geo.dailymotion.com"], home: "https://www.dailymotion.com/",
       videoId: (url) => /^x[a-z0-9]{3,12}$/.test(url.searchParams.get("video") || "") ? url.searchParams.get("video") : "",
-      feeds: true, embedded: true},
+      // Only ~3 s is buffered ahead here, so a 3 s stop margin would hold playback permanently.
+      feeds: true, embedded: true, margin: .6},
   ];
 
   const parse = (value) => { try { return new URL(value); } catch { return null; } };

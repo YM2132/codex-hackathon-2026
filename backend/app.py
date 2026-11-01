@@ -137,6 +137,10 @@ async def classify(scan: Scan):
         # Never expose provider errors, credentials or request images in logs/responses.
         raise HTTPException(502, "Decisions unavailable or incomplete; playback remains paused") from exc
     elapsed = round(time.perf_counter() - began, 3)
+    result = verdict(probabilities, scan.ageBand)
+    # One line per window for debugging; no images, rules or provider payloads are logged.
+    print(f"classify {scan.videoId} {scan.start:g}-{scan.end:g}s frames={len(scan.frames)} "
+          f"-> {result.get('status')} {result.get('category')} p={result.get('probability')} api={elapsed}s", flush=True)
     return {"videoId": scan.videoId, "start": scan.start, "end": scan.end,
             **verdict(probabilities, scan.ageBand), "probabilities": probabilities,
             "frameCount": len(scan.frames), "apiSeconds": elapsed, "model": raw.get("model", "gpt-6-luna"),

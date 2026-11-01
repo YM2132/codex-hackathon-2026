@@ -46,6 +46,23 @@ function fromExtensionPage(sender) {
   return sender?.id === chrome.runtime.id && String(sender.url || "").startsWith(chrome.runtime.getURL(""));
 }
 
+const DEFAULT_PIN = "1111";
+const UNLOCK_MS = 10 * 60 * 1000;   // parent unlock lasts 10 minutes
+
+async function storePin(pin, isDefault = false) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  await chrome.storage.local.set({ parentPin: { salt: Array.from(salt), hash: await derivePin(pin, salt), isDefault } });
+}
+// Every install starts protected by a PIN (1111 until the parent changes it).
+async function ensurePin() {
+  const { parentPin } = await chrome.storage.local.get("parentPin");
+  if (!parentPin?.hash) await storePin(DEFAULT_PIN, true);
+}
+async function parentUnlocked() {
+  const { parentUnlockedUntil } = await chrome.storage.session.get("parentUnlockedUntil");
+  return Date.now() < (parentUnlockedUntil || 0);
+}
+
 async function verifyPin(pin) {
   const { parentPin } = await chrome.storage.local.get("parentPin");
   if (!parentPin?.salt || !parentPin?.hash) return false;
@@ -82,6 +99,7 @@ async function decide(videoId, tabId, fromPopup = false) {
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
+  await ensurePin();
   const current = await chrome.storage.sync.get(null);
   await chrome.storage.sync.set({ ...DEFAULT_SETTINGS, ...current });
   await chrome.storage.session.set({ allowedVideoIds: [] });
@@ -110,8 +128,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     if (message?.type === "get_settings") {
       const prefs = await settings();
+      await ensurePin();
       const { parentPin } = await chrome.storage.local.get("parentPin");
-      sendResponse({ ...prefs, pinConfigured: Boolean(parentPin?.hash) });
+      sendResponse({ ...prefs, pinConfigured: Boolean(parentPin?.hash), pinIsDefault: Boolean(parentPin?.isDefault), unlocked: await parentUnlocked() });
       return;
     }
     if (message?.type === "set_parent_pin") {
@@ -122,19 +141,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (existingPin?.hash && !(await verifyPin(String(message.currentPin || "")))) {
         sendResponse({ ok: false, error: "current_pin" }); return;
       }
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const hash = await derivePin(String(message.pin), salt);
-      await chrome.storage.local.set({ parentPin: { salt: Array.from(salt), hash } });
+      await storePin(String(message.pin));
       sendResponse({ ok: true }); return;
     }
     if (message?.type === "verify_parent_pin") {
       if (!fromExtensionPage(sender) || !(await verifyPin(String(message.pin || "")))) {
         sendResponse({ ok: false }); return;
       }
+      await chrome.storage.session.set({ parentUnlockedUntil: Date.now() + UNLOCK_MS });
+      sendResponse({ ok: true }); return;
+    }
+    if (message?.type === "lock_parent_controls") {
+      await chrome.storage.session.set({ parentUnlockedUntil: 0 });
       sendResponse({ ok: true }); return;
     }
     if (message?.type === "save_settings") {
-      const prefs = { ...DEFAULT_SETTINGS, ...(message.settings || {}) };
+      // Only first-time setup is open; afterwards every change (incl. turning protection off or
+      // switching to a preview state) needs a recent parent PIN unlock from a Pawse page.
+      const current = await settings();
+      if (!fromExtensionPage(sender) || (current.setupComplete && !(await parentUnlocked()))) {
+        sendResponse({ ...current, ok: false, error: "locked" }); return;
+      }
+      const incoming = message.settings || {};
+      const prefs = Object.fromEntries(Object.keys(DEFAULT_SETTINGS).map((k) => [k, incoming[k] ?? current[k] ?? DEFAULT_SETTINGS[k]]));
       await chrome.storage.sync.set(prefs);
       await chrome.storage.session.set({ allowedVideoIds: [] });
       // Every supported site, without needing the "tabs" permission: tabs without Pawse ignore it.

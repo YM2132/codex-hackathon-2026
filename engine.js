@@ -26,8 +26,21 @@
     if (target instanceof HTMLVideoElement) announced = target;
   }, true);
   const site = () => SproutSites.siteFor(location.href);
-  const mainVideo = () => (announced?.isConnected && announced)
-    || site()?.player?.()?.querySelector("video") || document.querySelector("video");
+  // Sites with a known player (YouTube, YouTube Kids) always use that player's video, never a
+  // hover preview or other muted video. Elsewhere use the hook's pick. The chosen element is
+  // marked so page-hook.js decodes exactly this video.
+  let marked = null;
+  const mainVideo = () => {
+    const player = site()?.player?.();
+    const video = player ? player.querySelector("video")
+      : (announced?.isConnected && announced) || document.querySelector("video");
+    if (video !== marked) {
+      marked?.removeAttribute("data-pawse-watched");
+      video?.setAttribute("data-pawse-watched", "");
+      marked = video;
+    }
+    return video;
+  };
   const isAd = () => !!site()?.ad?.();
   const UNSUPPORTED = {
     "worker-mse": "This player’s video buffer is unavailable. Ask a grown-up.",
@@ -72,7 +85,7 @@
         if (changed) {
           this.source = video.currentSrc; this.sourceVideo = video; this.generation++; this.windows.clear();
         }
-        decision = SproutGuard.evaluate(this.windows, video.currentTime, video.duration);
+        decision = SproutGuard.evaluate(this.windows, video.currentTime, video.duration, site()?.margin ?? SproutGuard.MARGIN);
         if (decision.status === "connecting" && this.error) decision.detail = this.error;
       }
       const hold = ["connecting", "review", "blocked"].includes(decision.status);
@@ -108,8 +121,8 @@
       const videoId = this.videoId;
       const index = Math.floor(video.currentTime / SproutGuard.WINDOW);
       let target = index;
-      while (this.windows.has(target) && target <= index + 3) target++;
-      if (target > index + 3) return;
+      while (this.windows.has(target) && target <= index + SproutGuard.SCAN_AHEAD) target++;
+      if (target > index + SproutGuard.SCAN_AHEAD) return;
       const start = target * SproutGuard.WINDOW, end = Math.min(video.duration, start + SproutGuard.WINDOW);
       if (start >= end) return;
       this.busy = true;

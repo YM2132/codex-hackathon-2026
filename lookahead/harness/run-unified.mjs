@@ -68,12 +68,12 @@ try {
   await page.goto('https://www.youtube.com/watch?v=aqz-KE-bpKQ');
   await page.waitForFunction(() => document.querySelector('#pawse-protection-root')?.shadowRoot?.textContent.includes('pause and pick another'), {timeout: 30000});
   const held = await page.evaluate(() => ({time: document.querySelector('video').currentTime, paused: document.querySelector('video').paused}));
-  assert(held.paused && held.time < 6 && held.time > 4, JSON.stringify(held));
+  assert(held.paused && held.time < 3.5 && held.time > 2.5, JSON.stringify(held));  // 3 s margin before the flagged 6 s window
   assert(calls.some(c => c.start === 6 && c.frames.length === 3));
   assert(calls.every(c => c.ageBand === '6-8' && c.customRules[0] === 'Avoid scary monsters'));
   assert(calls.every(c => c.frames.every(f => f.jpeg.startsWith('data:image/jpeg;base64,'))));
   await page.screenshot({path: path.join(out, 'blocked.png')});
-  console.log('PASS: captured future frames, transmitted parent rules, stopped before flagged 6s boundary', held);
+  console.log('PASS: captured future frames, transmitted parent rules, stopped ~3 s before flagged 6s boundary', held);
 
   delay = 800;
   await page.$eval('video', v => { v.currentTime = 18; v.play().catch(() => {}); });
@@ -101,7 +101,7 @@ try {
   // Approval needs the parent PIN (test-only PIN set here); a wrong PIN must not release playback.
   const approvals = await popup.evaluate(async () => {
     const [tab] = await chrome.tabs.query({url:'https://www.youtube.com/*'});
-    const set = await chrome.runtime.sendMessage({type:'set_parent_pin', pin:'2468'});
+    const set = await chrome.runtime.sendMessage({type:'set_parent_pin', pin:'2468', currentPin:'1111'});  // change the default PIN
     const wrong = await chrome.runtime.sendMessage({type:'allow_once', videoId:'aqz-KE-bpKQ', tabId:tab.id, pin:'1111'});
     await new Promise(r => setTimeout(r, 700));
     const right = await chrome.runtime.sendMessage({type:'allow_once', videoId:'aqz-KE-bpKQ', tabId:tab.id, pin:'2468'});
