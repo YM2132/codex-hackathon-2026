@@ -1,85 +1,71 @@
-# Pawse — look-ahead video protection for kids
+# Pawse: look-ahead video protection for kids
 
-**Checks videos in Chrome on YouTube (watch pages), YouTube Kids, TikTok, Instagram, X, Reddit, Snapchat and Dailymotion. Other websites are not classified.**
+Pawse is a Chrome extension that checks the next few seconds of a video **before your child sees them**. It decodes frames the site has already buffered, asks OpenAI Decisions whether they fit your family's rules, and pauses playback before anything flagged. Pawse the dog explains what's happening in kid-friendly language.
 
-| Site | How the video is identified | Notes |
-|---|---|---|
-| YouTube, YouTube Kids | 11-character video ID | Watch pages only (no Shorts); ads held for review |
-| TikTok, Instagram, X, Reddit, Snapchat | `<site>:<id>` from the video URL, or `<site>:page-<hash>` on feeds | On feeds only the watched video plays; others are paused. Snapchat uses the plain-file decoder |
-| Dailymotion | inside the `geo.dailymotion.com` player frame | Player buffers only a few seconds ahead, so checks run close to the playhead |
+**Supported:** YouTube, YouTube Kids, TikTok, Instagram, X, Reddit, Snapchat, Dailymotion.
+**Not supported** (videos aren't checked): Facebook, Twitch, Vimeo, Netflix and other DRM services.
 
-Not supported (no Pawse UI; videos are not checked): Facebook and Twitch (MediaSource runs in a worker), Vimeo and DRM services (encrypted), PBS Kids (untested, US-only). See `lookahead/README.md` for per-site test results.
+## Install
 
-One Chrome extension combining Raja’s Pawse dog mascot, four animated states, and parent controls, buffered video capture, and the live OpenAI Decisions classifier. Integration branch: `feat/unified-sprout-extension`.
-
-**Team agents: read [AGENT_HANDOFF.md](AGENT_HANDOFF.md)** for branch provenance, integration contracts, verified behavior, and known gaps before merging changes.
-
-## Run the unified extension
+You need Google Chrome, [uv](https://docs.astral.sh/uv/getting-started/installation/) (`brew install uv` on macOS) and an OpenAI API key with Decisions access.
 
 ```sh
-git switch feat/unified-sprout-extension
-uv sync
-# Set OPENAI_API_KEY in .env (backend only).
-uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000
+git clone https://github.com/YM2132/codex-hackathon-2026.git
+cd codex-hackathon-2026
+./start.sh
 ```
 
-1. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the **repository root**. Disable the separate look-ahead preview extension if installed.
-2. Pin Pawse. Open its popup, choose the child's age, and click **Set up protection**.
-3. Keep **Try Pawse’s states → Ready** (or **No sample state**) selected for real model calls.
-4. Reload any open video tab once after installing. The capture hook must run before the site creates its video buffer.
-5. Open the [shared test video](https://youtu.be/XnWESGXnGwY), then press Play if the browser requires it. Pawse holds playback while it checks, lets checked windows play, and pauses before a flagged window. Open the popup for status, a parent override, or family rules.
+`start.sh` asks for your API key once and saves it to `.env`, which is git-ignored and never put in the extension. It then installs dependencies and starts the local backend. Keep the terminal open while using Pawse.
 
-The backend must remain running. `http://127.0.0.1:8000/health` reports whether it has a key configured. No key is stored in the extension. Frame samples and parent rules are sent to OpenAI through the local backend. This path uses the bytes the site has already buffered; it does not invoke yt-dlp.
+Then, in Chrome:
 
-## How the pieces connect
+1. Open `chrome://extensions` and turn on **Developer mode**.
+2. Click **Load unpacked** and select the `codex-hackathon-2026` folder.
+3. Pin Pawse, open it, choose your child's age and set a parent PIN.
+4. Reload any video tab that was already open, then play a video.
 
-- **Pawse UI** (`content.js`, `popup.*`, `assets/`): parent profiles, plain-language rules, pause card, mascot, help requests, and a session override.
-- **Look-ahead capture** (`lookahead/extension/page-hook.js`): copies the player's MediaSource chunks and decodes future frames in a separate hidden video element. The original player's position is not changed for capture.
-- **Controller** (`engine.js`, `guard.js`): requests three samples per three-second window at roughly one-second intervals, scans up to four windows including the current one, and guards playback. Short final windows use fewer samples. All frames in a window are assessed together in one Decisions request.
-- **Service worker** (`service-worker.js`): forwards frames and the latest parent profile to the local relay; stores recent status for the popup.
-- **Backend** (`backend/app.py`): calls `POST /v1/decisions` with `gpt-6-luna`, reuses the experiment's nine categories, adds one predicate per family rule, validates all answers, and returns window scores plus request latency.
+On Windows, or to run the backend by hand: put `OPENAI_API_KEY=...` in `.env` (see `.env.example`), then run `uv sync` and `uv run uvicorn backend.app:app --host 127.0.0.1 --port 8000`.
 
-Politics and religion are descriptive tags and do not block by default; a family rule can opt into avoiding them. The demo blocking thresholds are 0.50 for ages 3–5, 0.70 for 6–8, and 0.85 for 9–12. Scores in the 0.20-wide band below the blocking threshold trigger adult review (minimum 0.30). These are prototype choices, not calibrated child-safety guarantees.
+## Using Pawse
 
-Missing frames, missing/refused answers, an unavailable backend, or an unsupported capture path keep the video paused. Seeking into unchecked content holds it for a new check. Changing settings invalidates checked windows and session overrides. A short boundary margin stops playback before the next unchecked/flagged window. Parent approval explicitly bypasses checks for that video for the browser session.
+- **While a video plays:** Pawse checks it in 3-second windows ahead of playback. Checked windows play. Pawse pauses the video before a flagged window and shows the dog with options to ask a grown-up or go back.
+- **Parent popup** (PIN-protected): age band (3–5, 6–8 or 9–12), on/off, plain-language family rules (e.g. "No scary monsters"), and **approve once** for the current video.
+- **Feeds** (TikTok, Instagram, X, Reddit): only the video being watched plays, and each new video is checked.
+- **Built-in categories:** violence, sexual content, frightening content, dangerous behaviour, substance use, hate, visible profanity. Political and religious content is only blocked if a family rule says so.
+- **Preview states** in the popup demo the UI without sending any frames.
 
-## Current limits
+## Troubleshooting
 
-This is a hackathon prototype: visual sampling can miss brief events, audio is not analyzed, and model results can be wrong. The browser guard is best effort and is not a managed-device security boundary. Parent controls and approvals need a 4–8 digit PIN, but an unmanaged extension can still be disabled in chrome://extensions. Ads are held for adult review. Worker-based MediaSource, DRM, live streams, and player paths without captured buffers are unsupported and remain held. YouTube Shorts and recommendation filtering are not validated. On feed pages, “allow once” covers only the video playing at the time.
+| Problem | Fix |
+|---|---|
+| "Pawse cannot reach the Decisions service" | The backend isn't running: run `./start.sh`. If it is running, check that your key has Decisions access. |
+| No Pawse on a supported site | Reload the tab after installing or updating the extension. |
+| Video keeps pausing every few seconds | Pawse is waiting for the next check. Dailymotion only buffers about 3 s ahead, so this happens more there. |
+| Video stays paused with "buffer unavailable" | That player can't be checked (worker-based or DRM). |
 
-The MAIN-world capture bridge trusts the page's media environment; it is not hardened against a malicious page forging bridge messages. The backend binds only to loopback. Do not expose this unauthenticated development relay publicly.
+Also disable the older "Video Look-ahead Preview" extension if you loaded it: both hook the same browser APIs.
 
-**Preview mode** remains available for UI demos and is clearly labeled. It sends no frames and is not a model prediction. The original capture-only preview and harnesses remain under `lookahead/`; load only the root extension for the unified flow.
+## Limits
 
-## Tests
+This is a hackathon prototype:
+- Pawse samples about one frame per second, so it can miss brief events.
+- Audio isn't analysed, and model results can be wrong.
+- It's best-effort protection, not a security boundary: an unmanaged extension can be disabled in `chrome://extensions`.
+- The backend is an unauthenticated local relay. Keep it on `127.0.0.1`.
+
+## How it works
+
+`page-hook.js` copies the encoded video the site appends to Media Source Extensions and decodes future frames in a hidden player. `engine.js` sends 3 frames per window through `service-worker.js` to `backend/app.py`, which calls `POST /v1/decisions` and applies the age thresholds. `guard.js` and `content.js` pause or resume playback and show Pawse. Each site's URL and player handling lives in `sites.js`.
+
+## Development
 
 ```sh
 uv run python -m unittest discover -s tests
-node --test tests/guard.test.cjs
+node --test tests/guard.test.cjs tests/sites.test.cjs
 npm ci --prefix lookahead/harness
-node lookahead/harness/run-unified.mjs
+node lookahead/harness/run-unified.mjs      # synthetic video + stub backend (stop the real one first)
+node lookahead/harness/run-multisite.mjs    # real YouTube/TikTok/Snapchat + stub backend
+node lookahead/harness/stub-relay.mjs       # keyless stub backend for manual testing
 ```
 
-The browser integration test uses a generated MSE video and a deterministic local HTTP relay (no OpenAI calls). Stop the real backend first because the test binds port 8000. It checks capture, transmitted settings, pause before a flagged boundary, backend failure, and parent override. Set `CHROME_PATH` to a Chrome for Testing executable if Puppeteer's bundled browser is unavailable. Test artifacts are written under ignored `artifacts/`.
-
-## Shared test video
-
-Use [this YouTube test video](https://youtu.be/XnWESGXnGwY) for the team's extension and content-classification experiments. Video ID: `XnWESGXnGwY`.
-
-See [experiment setup and run instructions](experiments/README.md) for the frame-sampling and Decisions API pipeline on this branch.
-
-See the [latency benchmark](experiments/LATENCY.md) for measured response times across 1, 3, 5, 10, and 13 frames per Decisions request (five calls per size, with cache usage recorded).
-
-## Dividing Responsibilities
-
-### Product
-
-1. Designing a child-friendly interface to the Chrome extension, eg. OpenAI Pets for Kids
-2. Ensuring the extension reroutes back to a safe page
-3. Using the models to detect if what the child is seeing should be blocked via pop-up
-4. Create a demo
-### Modelling
-
-1. Downloading a benchmark for evaluating content safety filters for children, specifically focused on Youtube videos.
-2. Evaluating OpenAI stack on this benchmark to assess viability
-3. Optimizing inference using metadata + avoid downloading videos. How can we get reliable performance while minimizing the cost of OpenAI calls? 
+Contributors and agents: read [AGENT_HANDOFF.md](AGENT_HANDOFF.md) for contracts, branch history and known gaps. Capture research and per-site results are in [lookahead/README.md](lookahead/README.md), and model experiments in [experiments/README.md](experiments/README.md).
