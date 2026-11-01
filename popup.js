@@ -7,7 +7,7 @@ let renderedRulesKey = null;
 async function getSettings() {
   if (extensionMode) return { ...DEFAULTS, ...(await chrome.runtime.sendMessage({ type: "get_settings" })) };
   try {
-    const saved = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("sprout-preview-settings") || "{}") };
+    const saved = { ...DEFAULTS, ...JSON.parse(localStorage.getItem("pawse-preview-settings") || "{}") };
     const demo = new URLSearchParams(location.search).get("demo");
     if (["safe", "review", "blocked"].includes(demo)) {
       return { ...saved, setupComplete: true, protectionOn: true, previewScenario: demo };
@@ -21,7 +21,7 @@ async function saveSettings(patch) {
   const current = await getSettings();
   const next = { ...current, ...patch };
   if (extensionMode) await chrome.runtime.sendMessage({ type: "save_settings", settings: next });
-  else localStorage.setItem("sprout-preview-settings", JSON.stringify(next));
+  else localStorage.setItem("pawse-preview-settings", JSON.stringify(next));
   return next;
 }
 
@@ -41,7 +41,7 @@ async function getDecision(video) {
   if (!extensionMode) {
     const settings = await getSettings();
     if (!settings.setupComplete || !settings.protectionOn) return { status: "off" };
-    if (sessionStorage.getItem("sprout-allowed-once") === video.id) return { status: "allowed_once", preview: true };
+    if (sessionStorage.getItem("pawse-allowed-once") === video.id) return { status: "allowed_once", preview: true };
     const states = {
       safe: { status: "safe", preview: true },
       review: { status: "review", preview: true },
@@ -56,10 +56,10 @@ function describeDecision(decision, settings, video) {
   if (!video.isYoutube) return { title: "Open YouTube", text: "Protection status appears when you visit a YouTube video.", icon: "↗", kind: "" };
   if (!video.id) return { title: "No video open", text: "Open a video to see its protection status here.", icon: "•", kind: "" };
   if (!settings.protectionOn) return { title: "Protection is off", text: "Turn it on to use the selected profile on YouTube.", icon: "○", kind: "" };
-  if (decision.status === "safe") return { title: "Looks okay for this profile", text: decision.preview ? "Preview only: this is not a model result." : "Sprout checked this video for this profile.", icon: "✓", kind: "good" };
+  if (decision.status === "safe") return { title: "Looks okay for this profile", text: decision.preview ? "Preview only: this is not a model result." : "Pawse checked this video for this profile.", icon: "✓", kind: "good" };
   if (decision.status === "review") return { title: "A grown-up should check this one", text: "Playback is paused until an adult chooses what to do.", icon: "!", kind: "review" };
   if (decision.status === "blocked") return { title: "Paused for this profile", text: "This sample state keeps playback paused.", icon: "Ⅱ", kind: "blocked" };
-  if (decision.status === "connecting") return { title: "Sprout can’t check yet", text: "Playback stays paused until a grown-up checks or the moderation service is connected.", icon: "?", kind: "review" };
+  if (decision.status === "connecting") return { title: "Pawse can’t check yet", text: "Playback stays paused until a grown-up checks or the moderation service is connected.", icon: "?", kind: "review" };
   if (decision.status === "allowed_once") return { title: "Allowed for this video", text: "Playback can continue for this video only.", icon: "✓", kind: "good" };
   return { title: "Model not connected yet", text: "Protection is on. The team’s moderation service will provide video decisions here.", icon: "…", kind: "" };
 }
@@ -197,7 +197,7 @@ $("allowOnceButton").addEventListener("click", async () => {
   if (extensionMode && video.id && video.tabId != null) {
     await chrome.runtime.sendMessage({ type: "allow_once", videoId: video.id, tabId: video.tabId });
   } else if (!extensionMode) {
-    sessionStorage.setItem("sprout-allowed-once", video.id);
+    sessionStorage.setItem("pawse-allowed-once", video.id);
   }
   toast("Allowed once. This choice ends with the current session.");
   render();

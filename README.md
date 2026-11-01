@@ -1,14 +1,14 @@
-# Sprout family mode — YouTube extension prototype
+# Pawse family mode — YouTube extension prototype
 
-Sprout adds a parent-controlled pause and review flow to YouTube. This branch focuses on the interface and demo path; it does not call a moderation model yet. The YouTube companion uses four fixed Sprout sprite poses: idle, thinking, greeting, and pause. The matching pose appears in its helper panel and on the pause card; the extension toolbar uses a static Sprout icon.
+Pawse adds a parent-controlled pause and review flow to YouTube. This branch focuses on the interface and demo path; it does not call a moderation model yet. The YouTube companion uses four fixed Pawse sprite poses: idle, thinking, greeting, and pause. The matching pose appears in its helper panel and on the pause card; the extension toolbar uses a static Pawse icon.
 
 ## Parent and child flow
 
 1. On first open, a parent chooses an age range and turns protection on.
 2. A child opens a YouTube video. The extension content script asks the service worker for the video decision.
 3. Until the algorithm service is connected, the page shows a clear connection state. The popup's **Preview the experience** menu can switch among sample states for a demo; each sample is labeled and does not represent a model prediction.
-4. Review, blocked, and service-unavailable states pause playback and show Sprout with a short, child-friendly next step. The child can ask a grown-up (which adds a toolbar badge) or go back to videos.
-5. The parent opens the Sprout toolbar popup to see the state and any help request. They can allow the current video once, go back, or change the age profile or protection setting.
+4. Review, blocked, and service-unavailable states pause playback and show Pawse with a short, child-friendly next step. The child can ask a grown-up (which adds a toolbar badge) or go back to videos.
+5. The parent opens the Pawse toolbar popup to see the state and any help request. They can allow the current video once, go back, or change the age profile or protection setting.
 6. Parents can add up to ten plain-language family rules in the popup. The rules are saved in Chrome sync settings for the algorithm service to consume when it is connected.
 
 ## Load in Chrome
@@ -16,8 +16,8 @@ Sprout adds a parent-controlled pause and review flow to YouTube. This branch fo
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode**.
 3. Choose **Load unpacked** and select this repository folder.
-4. Pin the Sprout icon, visit a YouTube video, and open the extension popup.
-5. Choose **Set up protection**, then expand **Preview the experience** and select a sample state to walk through the flow. The preview is labeled and does not represent a model prediction. With protection enabled but no service connected, playback pauses and Sprout asks for a grown-up.
+4. Pin the Pawse icon, visit a YouTube video, and open the extension popup.
+5. Choose **Set up protection**, then expand **Preview the experience** and select a sample state to walk through the flow. The preview is labeled and does not represent a model prediction. With protection enabled but no service connected, playback pauses and Pawse asks for a grown-up.
 
 ## Algorithm handoff
 
