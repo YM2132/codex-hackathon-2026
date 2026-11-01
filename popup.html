@@ -52,6 +52,11 @@
         <p id="adultRequestLabel" class="adult-request" hidden>Your child asked for help with this video.</p>
         <span id="previewLabel" class="preview-label" hidden>Preview example · no model result</span>
         <button id="allowOnceButton" class="button button-primary button-wide" hidden>Allow this video once</button>
+        <form id="approvalForm" class="approval-form" hidden>
+          <label class="field-label" for="approvalPin">Parent PIN</label>
+          <input id="approvalPin" class="select-control" inputmode="numeric" autocomplete="current-password" type="password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required>
+          <button class="button button-primary button-wide" type="submit">Approve this video</button>
+        </form>
         <button id="backButton" class="text-button" hidden>Back to videos</button>
       </section>
 
@@ -87,6 +92,18 @@
         <div id="ruleList" class="rule-list" aria-live="polite"></div>
         <p class="rules-note"><span aria-hidden="true">ⓘ</span> Available when moderation is connected.</p>
       </section>
+
+      <details class="pin-settings" id="pinSettings">
+        <summary>Parent PIN</summary>
+        <form id="pinForm">
+          <label class="field-label" for="currentPin">Current PIN (to change it)</label>
+          <input id="currentPin" class="select-control" inputmode="numeric" autocomplete="current-password" type="password" pattern="[0-9]{4,8}" minlength="4" maxlength="8">
+          <label class="field-label" for="newPin">Choose a 4–8 digit PIN</label>
+          <input id="newPin" class="select-control" inputmode="numeric" autocomplete="new-password" type="password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required>
+          <button class="button button-primary button-wide" type="submit">Save PIN</button>
+        </form>
+        <p id="pinStatus" class="pin-status"></p>
+      </details>
 
       <details class="preview-tools" open>
         <summary>Try Pawse’s states</summary>

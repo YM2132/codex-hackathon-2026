@@ -35,7 +35,8 @@
         "assets/pawse-idle-cutout.png",
         "assets/pawse-thinking-cutout.png",
         "assets/pawse-greeting-cutout.png",
-        "assets/pawse-pause-cutout.png"
+        "assets/pawse-pause-cutout.png",
+        "assets/pawse-animation-sheet.png"
       ],
       "matches": ["https://www.youtube.com/*"]
     }

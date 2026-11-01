@@ -145,7 +145,9 @@ async function render() {
   $("adultRequestLabel").hidden = !adultRequest.requested;
   $("adultRequestLabel").textContent = adultRequest.requested ? "🐾 Pawse let your grown-up know." : "";
   $("allowOnceButton").hidden = !["review", "blocked", "connecting"].includes(decision.status) || !video.id;
+  $("allowOnceButton").textContent = decision.status === "connecting" ? "Ask a grown-up" : "Ask a grown-up to approve";
   $("backButton").hidden = !["review", "blocked", "connecting"].includes(decision.status) || !video.id;
+  $("pinStatus").textContent = settings.pinConfigured ? "PIN set" : "Set a PIN to approve videos.";
 }
 
 $("startButton").addEventListener("click", async () => {
@@ -211,13 +213,28 @@ async function refreshTab() {
 }
 
 $("allowOnceButton").addEventListener("click", async () => {
+  $("approvalForm").hidden = false;
+  $("approvalPin").focus();
+});
+
+$("approvalForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
   const video = await activeVideo();
-  if (extensionMode && video.id && video.tabId != null) {
-    await chrome.runtime.sendMessage({ type: "allow_once", videoId: video.id, tabId: video.tabId });
-  } else if (!extensionMode) {
-    sessionStorage.setItem("pawse-allowed-once", video.id);
-  }
-  toast("Allowed once. This choice ends with the current session.");
+  const result = await chrome.runtime.sendMessage({ type: "allow_once", videoId: video.id, tabId: video.tabId, pin: $("approvalPin").value });
+  if (!result?.ok) { toast("That PIN didn’t work. Try again."); $("approvalPin").select(); return; }
+  $("approvalPin").value = "";
+  $("approvalForm").hidden = true;
+  toast("Approved for this session.");
+  render();
+});
+
+$("pinForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const result = await chrome.runtime.sendMessage({ type: "set_parent_pin", pin: $("newPin").value, currentPin: $("currentPin").value });
+  if (!result?.ok) { toast(result?.error === "current_pin" ? "Enter the current PIN to change it." : "Use 4–8 digits for the PIN."); return; }
+  $("currentPin").value = "";
+  $("newPin").value = "";
+  toast("Parent PIN saved.");
   render();
 });
 

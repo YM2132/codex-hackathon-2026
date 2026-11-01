@@ -32,6 +32,18 @@ async function settings() {
   return { ...DEFAULT_SETTINGS, ...saved };
 }
 
+async function derivePin(pin, salt) {
+  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 120000, hash: "SHA-256" }, material, 256);
+  return Array.from(new Uint8Array(bits), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function verifyPin(pin) {
+  const { parentPin } = await chrome.storage.local.get("parentPin");
+  if (!parentPin?.salt || !parentPin?.hash) return false;
+  return (await derivePin(pin, Uint8Array.from(parentPin.salt))).toLowerCase() === parentPin.hash;
+}
+
 async function decide(videoId) {
   const prefs = await settings();
   if (!prefs.setupComplete || !prefs.protectionOn) {
@@ -66,8 +78,23 @@ chrome.runtime.onInstalled.addListener(async () => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     if (message?.type === "get_settings") {
-      sendResponse(await settings());
+      const prefs = await settings();
+      const { parentPin } = await chrome.storage.local.get("parentPin");
+      sendResponse({ ...prefs, pinConfigured: Boolean(parentPin?.hash) });
       return;
+    }
+    if (message?.type === "set_parent_pin") {
+      if (sender.tab || !/^\d{4,8}$/.test(String(message.pin || ""))) {
+        sendResponse({ ok: false }); return;
+      }
+      const { parentPin: existingPin } = await chrome.storage.local.get("parentPin");
+      if (existingPin?.hash && !(await verifyPin(String(message.currentPin || "")))) {
+        sendResponse({ ok: false, error: "current_pin" }); return;
+      }
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const hash = await derivePin(String(message.pin), salt);
+      await chrome.storage.local.set({ parentPin: { salt: Array.from(salt), hash } });
+      sendResponse({ ok: true }); return;
     }
     if (message?.type === "save_settings") {
       const prefs = { ...DEFAULT_SETTINGS, ...(message.settings || {}) };
@@ -112,6 +139,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
     if (message?.type === "allow_once") {
+      if (sender.tab || !(await verifyPin(String(message.pin || "")))) {
+        sendResponse({ ok: false, error: "pin" }); return;
+      }
       const videoId = String(message.videoId || "");
       const saved = await chrome.storage.session.get("allowedVideoIds");
       const allowedVideoIds = [...new Set([...(saved.allowedVideoIds || []), videoId])];
